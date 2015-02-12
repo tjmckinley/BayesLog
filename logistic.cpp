@@ -1,42 +1,20 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
-//function to update variance-covariance matrix for adaptive proposal
-void adapt_update(int i, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, NumericMatrix posterior)
+//function to scale proposal variance
+double adapt_scale(int nacc, int niter, double desacc, double propscale)
 {
-    int j, k, m;
+    double propscale1 = propscale;
+    double accrate = (double) nacc;
+    accrate = accrate / ((double) niter);
 
-    //update means and variances for adaptive proposal
-    if((i + 1) == ninitial)
+    if(niter > 0)
     {
-        //first: means
-        for(j = 0; j < npars; j++)
-        {
-            (*tempmn)[j] = 0;
-            for(k = 0; k <= i; k++) (*tempmn)[j] += posterior(k, j);
-            (*tempmn)[j] = (*tempmn)[j] / ((double) i + 1);
-        }
-        //second: variances
-        for(j = 0; j < npars; j++)
-        {
-            (*tempvar)[j] = 0;
-            for(k = 0; k <= i; k++) (*tempvar)[j] += pow(posterior(k, j), 2.0);
-            (*tempvar)[j] = (*tempvar)[j] - (i + 1) * pow((*tempmn)[j], 2.0);
-            (*tempvar)[j] = (*tempvar)[j] / ((double) i);
-        }
-        
+        if(accrate <= desacc) propscale1 = propscale1 / (2.0 - (accrate / desacc));
+        else propscale1 = propscale1 * (2.0 - ((1.0 - accrate) / (1.0 - desacc)));
     }
-    else
-    {
-        //start recursively updating variance 
-        for(j = 0; j < npars; j++) (*tempvar)[j] = ((*tempvar)[j] * (i - 1)) + (i * pow((*tempmn)[j], 2.0));
-        //recursively update mean 
-        for(j = 0; j < npars; j++) (*tempmn)[j] = ((*tempmn)[j] * i + posterior(i, j)) / ((double) i + 1);
-        //end recursively updating variance 
-        for(j = 0; j < npars; j++) (*tempvar)[j] += pow(posterior(i, j), 2.0) - (i + 1) * pow((*tempmn)[j], 2.0);
-        for(j = 0; j < npars; j++) (*tempvar)[j] = (*tempvar)[j] / ((double) i + 1);
-    }
-    return;
+    else propscale1 = propscale;
+    return propscale1;
 }
 
 // function for calculating the log-likelihood
@@ -97,6 +75,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
+    Rprintf("Number of regression parameters = %d\n", nregpars);
     
     // set up output vector of length 'niter' to record chain
     // (append extra column for unnormalised posterior)
@@ -130,7 +109,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             for(i = 0; i < npars; i++) pars[i] = ini_pars[i];
         }
             
-        for(i = 0; i < nregpars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+        for(i = 0; i < nregpars; i++) indpars[i] = 1;//(int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
         
         if(pars[npars - 1] < 0.0)
         {
@@ -179,8 +158,8 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0);
-    NumericVector tempmn(npars);
-    NumericVector tempvar(npars);
+    double *tempsd = (double *) malloc (npars * sizeof(double));
+    for(j = 0; j < npars; j++) tempsd[j] = 0.1;
     
     //set up vectors to record acceptance rates
     int *nacc = (int *) malloc(npars * sizeof(int));
@@ -197,17 +176,24 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         else
         {
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
-            else pars_prop[0] = rnorm(1, pars[0], sqrt(adaptscale * tempvar[0]))[0];
+            else pars_prop[0] = rnorm(1, pars[0], tempsd[0])[0];
         }
+//        Rprintf("pars[%d] = %f pars_prop[%d] = %f\n", 0, pars[0], 0, pars_prop[0]);
+//        Rprintf("priors = %f priors = %f\n", priors(0, 0), priors(0, 1));
         // update log-likelihood
         LL_prop = loglike(pars_prop, indpars, data);
+//        Rprintf("LL_curr = %f LL_prop = %f\n", LL_curr, LL_prop);
         // calculate log-likelihood – log-prior
         acc_prop = LL_prop;
-        acc_prop -= 0.5 * pow((pars_prop[0] - priors(0, 0)) / sqrt(priors(0, 1)), 2.0);
+//        Rprintf("acc_prop = %f\n", acc_prop);
+        acc_prop -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars_prop[0] - priors(0, 0), 2.0);
+//        Rprintf("acc_prop = %f\n", acc_prop);
         acc_curr = LL_curr;
-        acc_curr -= 0.5 * pow((pars[0] - priors(0, 0)) / sqrt(priors(0, 1)), 2.0);
+        acc_curr -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars[0] - priors(0, 0), 2.0);
         //accept/reject proposal
         acc = acc_prop - acc_curr;
+//        Rprintf("acc_curr = %f acc_prop = %f\n", acc_curr, acc_prop);
+//        Rprintf("acc = %f acc0 = %f\n", acc, exp(acc));
         if(R_finite(acc) != 0)
         {
             if(log(runif(1, 0.0, 1.0)[0]) < acc)
@@ -230,7 +216,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
                 else
                 {
                     if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j + 1] = rnorm(1, pars[j + 1], 0.1)[0];
-                    else pars_prop[j + 1] = rnorm(1, pars[j + 1], sqrt(adaptscale * tempvar[j + 1]))[0];
+                    else pars_prop[j + 1] = rnorm(1, pars[j + 1], tempsd[j + 1])[0];
                 }
                 // calculate log-likelihood – log-prior
                 LL_prop = loglike(pars_prop, indpars, data);
@@ -242,6 +228,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
                 acc_curr -= 0.5 * pow((pars[j + 1] - priors(j + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
                 //accept/reject proposal
                 acc = acc_prop - acc_curr;
+//                Rprintf("acc%d = %f\n", j + 1, exp(acc));
                 if(R_finite(acc) != 0)
                 {
                     if(log(runif(1, 0.0, 1.0)[0]) < acc)
@@ -262,11 +249,13 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         else
         {
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-            else pars_prop[j] = rnorm(1, pars[j], sqrt(adaptscale * tempvar[j]))[0];
+            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
         }
+//        Rprintf("pars_prop_prop[%d] = %f\n", j, pars_prop[j]);
         //check validity
         if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
         {
+//            Rprintf("pars_prop[%d] = %f\n", j, pars_prop[j]);
             // calculate log-prior
             acc_prop = 0.0;
             acc_curr = 0.0;
@@ -279,6 +268,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             }
             //accept/reject proposal
             acc = acc_prop - acc_curr;
+//            Rprintf("acc%d = %f\n", j, exp(acc));
             if(R_finite(acc) != 0)
             {
                 if(log(runif(1, 0.0, 1.0)[0]) < acc)
@@ -311,6 +301,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         {
             free(pars); pars = NULL;
             free(pars_prop); pars_prop = NULL;
+            free(tempsd); tempsd = NULL;
             free(indpars); indpars = NULL;
             free(nacc); nacc = NULL;
             stop("Non-finite posterior produced");
@@ -322,11 +313,16 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         output(i, npars + nregpars) = acc_curr;
         
         // calculations for adaptive proposal
-        if ((i + 1) >= 100) adapt_update(i, 100, npars, &tempmn, &tempvar, output);
-        
-        // print some output to screen for book-keeping
-        if ((i + 1) % 1000 == 0)
+        if((i + 1) % 1000 == 0)
         {
+            //update proposal variances
+            for(j = 0; j < npars; j++)
+            {
+                tempsd[j] = adapt_scale(nacc[j], 1000, 0.44, tempsd[j]);
+//                Rprintf("tempsd[%d] = %f nacc = %d\n", j, tempsd[j], nacc[j]);
+            }
+            
+            // print some output to screen for book-keeping
             minnacc = nacc[0];
             maxnacc = nacc[0];
             for(j = 1; j < npars; j++)
@@ -342,6 +338,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     //free memory from the heap
     free(pars); pars = NULL;
     free(pars_prop); pars_prop = NULL;
+    free(tempsd); tempsd = NULL;
     free(indpars); indpars = NULL;
     free(nacc); nacc = NULL;
     
