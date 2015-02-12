@@ -13,10 +13,6 @@ bwt <- with(birthwt,
 #source in necessary functions
 source("analysisfunctions.R")
 
-#convert data frame into correct format for use
-#in Bayesian model
-bwt <- createLinear(bwt, "low")
-
 #run mcmc
 bwt.mcmc <- run.mcmc(bwt, "low")
 

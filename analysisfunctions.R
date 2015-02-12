@@ -5,14 +5,23 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05)
-{	
+run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 2000, scale = 0.05)
+{
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
 	stopifnot(length(respind) > 0)
 	if(respind != 1) dat <- cbind(dat[, respind], dat[, -respind])
 	
-	#convert to matrix
+    #convert data frame into correct format for use
+    #in Bayesian model
+    dat <- createLinear(dat, response)
+    
+    #extract components
+    factindex <- dat$factindex
+    vars <- dat$vars
+    dat <- dat$data	
+	
+	#convert data to matrix
 	dat <- as.matrix(dat)
 	
 	#extract number of parameters
@@ -41,8 +50,14 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
 	
 	#run model
 	model.sim <- list(NULL)
-	for(j in 1:nchains) model.sim[[j]] <- as.mcmc(logisticMH(dat, inits[[j]], gen_inits, priors, n.iter, scale))
-	
+	for(j in 1:nchains)
+	{
+        model.sim[[j]] <- logisticMH(dat, inits[[j]], gen_inits, priors, n.iter, scale)
+        #add names
+        colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
+        model.sim[[j]] <- as.mcmc(model.sim[[j]])
+    }
+    
 	#return output
 	model.sim <- as.mcmc.list(model.sim)
 	model.sim
@@ -60,12 +75,25 @@ createLinear <- function(data, response)
     data <- data[, y != response]
     y <- y[y != response]
     
+    #record factor index
+    factindex <- NULL
+    vars <- NULL
     for(i in 1:length(y))
     {
         if(is.numeric(data[, i]))
         {
             data1 <- cbind(data1, data[, i])
             colnames(data1)[ncol(data1)] <- y[i]
+            if(is.null(factindex))
+            {
+                factindex <- i
+                vars <- y[i]
+            }
+            else
+            {
+                factindex <- c(factindex, i)
+                vars <- c(vars, y[i])
+            }
         }
         if(is.factor(data[, i]))
         {
@@ -75,8 +103,18 @@ createLinear <- function(data, response)
                 data1 <- cbind(data1, ifelse(data[, i] == levels(data[, i])[j], 1, 0))
                 colnames(data1)[ncol(data1)] <- paste0(y[i], j)
             }
+            if(is.null(factindex))
+            {
+                factindex <- rep(i, length(levels(data[, i])) - 1)
+                for(j in 2:length(levels(data[, i]))) vars <- paste0(y[i], "_", levels(data[, i])[j])
+            }
+            else
+            {
+                factindex <- c(factindex, rep(i, length(levels(data[, i])) - 1))
+                for(j in 2:length(levels(data[, i]))) vars <- c(vars, paste0(y[i], "_", levels(data[, i])[j]))
+            }
         }
     }
-    return(data1)
+    return(list(data = data1, factindex = factindex, vars = vars))
 }
     
