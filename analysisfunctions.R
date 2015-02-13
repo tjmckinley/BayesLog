@@ -5,19 +5,23 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 2000, scale = 0.05)
+run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05)
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
 	stopifnot(length(respind) > 0)
 	if(respind != 1) dat <- cbind(dat[, respind], dat[, -respind])
 	
+	#extract original number of variables
+	orignpars <- ncol(dat) - 1
+	
     #convert data frame into correct format for use
     #in Bayesian model
     dat <- createLinear(dat, response)
     
     #extract components
-    factindex <- dat$factindex
+    factindex <- as.numeric(table(dat$factindex))
+    cumfactindex <- c(0, cumsum(factindex)[-length(factindex)]) + 1
     vars <- dat$vars
     dat <- dat$data	
 	
@@ -52,7 +56,7 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 2000, scal
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, inits[[j]], gen_inits, priors, n.iter, scale)
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars)
         #add names
         colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
         model.sim[[j]] <- as.mcmc(model.sim[[j]])

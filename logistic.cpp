@@ -18,7 +18,7 @@ double adapt_scale(int nacc, int niter, double desacc, double propscale)
 }
 
 // function for calculating the log-likelihood
-double loglike (double *pars, int *indpars, NumericMatrix data)
+double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 {
     //'pars' is a vector of parameters (beta0, beta, sigma2)
     //'indpars' is vector of indicators
@@ -56,14 +56,18 @@ double loglike (double *pars, int *indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
+    // 'factindex' is a vector containing number of levels for each variable
+    // 'cumfactindex' is a vector indexing start point for each variable
+    //      (accounting for different numbers of levels)
     // 'ini_pars' is a vector of initial values for the unknown parameters
     // 'gen_inits' is an indicator controlling whether initial values need to be generated
     // 'priors' is an (npars x 2) matrix containing the mean and var for Normal priors
     // 'niter' is the number of iterations over which to run the chain
     // 'scale' is mixing proportion for adaptive MCMC
+    // 'orignpars' is number of variables (disregarding dummy variables)
     
     //initialise indexing variables
     int i, j, k;
@@ -71,7 +75,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     // calculate number of parameters
     int nregpars = ini_pars.size() - 2;
     int npars = nregpars + 2;
-    int *indpars = (int *) malloc (nregpars * sizeof(int));
+    IntegerVector indpars(nregpars);
     
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
@@ -82,13 +86,8 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     NumericMatrix output(niter, nregpars + npars + 1);
     
     // initialise chain and set up vector to hold proposals
-    double *pars = (double *) malloc (npars * sizeof(double));
-    double *pars_prop = (double *) malloc (npars * sizeof(double));
-    for(i = 0; i < npars; i++)
-    {
-        pars[i] = 0;
-        pars_prop[i] = 0;
-    }
+    NumericVector pars(npars);
+    NumericVector pars_prop(npars);
     
     //declare variables
     double LL_curr, LL_prop, acc_curr, acc_prop, acc;
@@ -109,15 +108,9 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             for(i = 0; i < npars; i++) pars[i] = ini_pars[i];
         }
             
-        for(i = 0; i < nregpars; i++) indpars[i] = 1;//(int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+        for(i = 0; i < nregpars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
         
-        if(pars[npars - 1] < 0.0)
-        {
-            free(pars); pars = NULL;
-            free(pars_prop); pars_prop = NULL;
-            free(indpars); indpars = NULL;
-            stop("\nVariance hyperparameter not positive");
-        }
+        if(pars[npars - 1] < 0.0) stop("\nVariance hyperparameter not positive");
         
         //check the initial values produce a finite log-posterior
         LL_curr = loglike(pars, indpars, data);
@@ -142,13 +135,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         }
         k++;
     }
-    if(k == 100 && R_finite(acc_curr) == 0)
-    {    
-        free(pars); pars = NULL;
-        free(pars_prop); pars_prop = NULL;
-        free(indpars); indpars = NULL;
-        stop("\nInitial values produce non-finite log-likelihood");
-    }
+    if(k == 100 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
     
     Rprintf("\nInitial values:\n");
     for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
@@ -158,13 +145,20 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
     
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0);
-    double *tempsd = (double *) malloc (npars * sizeof(double));
-    for(j = 0; j < npars; j++) tempsd[j] = 0.1;
+    NumericVector tempsd(npars, 0.1);
     
     //set up vectors to record acceptance rates
-    int *nacc = (int *) malloc(npars * sizeof(int));
-    for(i = 0; i < npars; i++) nacc[i] = 0;
-    int minnacc, maxnacc;
+    IntegerVector nacc(npars);
+    IntegerVector nattempt(npars);
+    IntegerVector nacc_add(npars);
+    IntegerVector nattempt_add(npars);
+    IntegerVector nacc_del(npars);
+    IntegerVector nattempt_del(npars);
+    
+    double tempacc;
+    double minnacc, maxnacc;
+    double minnacc_add, maxnacc_add;
+    double minnacc_del, maxnacc_del;
     
     // run chain
     for(i = 0; i < niter; i++)
@@ -178,6 +172,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
             else pars_prop[0] = rnorm(1, pars[0], tempsd[0])[0];
         }
+        nattempt[0]++;
 //        Rprintf("pars[%d] = %f pars_prop[%d] = %f\n", 0, pars[0], 0, pars_prop[0]);
 //        Rprintf("priors = %f priors = %f\n", priors(0, 0), priors(0, 1));
         // update log-likelihood
@@ -207,39 +202,178 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         else pars_prop[0] = pars[0];
         
         //now propose moves for remaining regression terms
-        for(j = 0; j < nregpars; j++)
+        for(k = 0; k < orignpars; k++)
         {
-            if(indpars[j] == 1)
+//            for(j = 0; j < orignpars; j++) Rprintf("cumfact[%d] = %d fact = %d\n", j, cumfactindex[j], factindex[j]);
+//            getchar();
+            if(indpars[cumfactindex[k] - 1] == 1)
             {
-                // propose new value for parameter
-                if((i + 1) <= 100) pars_prop[j + 1] = rnorm(1, pars[j + 1], 0.1)[0];
+                //if variable is included, then propose to remove or move
+                if(runif(1, 0.0, 1.0)[0] < 0.5)
+                {
+                    //MOVEMENT
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        // propose new value for parameter
+                        if((i + 1) <= 100) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+                        else
+                        {
+                            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+                            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
+                        }
+                        nattempt[j]++;
+                    }
+                    // calculate log-likelihood – log-prior
+                    LL_prop = loglike(pars_prop, indpars, data);
+                    acc_prop = LL_prop;
+                    acc_curr = LL_curr;
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        acc_prop -= log(sqrt(pars_prop[npars - 1]));
+                        acc_prop -= 0.5 * pow((pars_prop[j] - priors(j, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
+                        acc_curr -= log(sqrt(pars[npars - 1]));
+                        acc_curr -= 0.5 * pow((pars[j] - priors(j, 0)) / sqrt(pars[npars - 1]), 2.0);
+                    }
+                    acc = acc_prop - acc_curr;
+                    
+                    //proposals cancel out
+                    
+                    //accept/reject proposal
+                    if(R_finite(acc) != 0)
+                    {
+                        if(log(runif(1, 0.0, 1.0)[0]) < acc)
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                            {
+                                pars[j] = pars_prop[j];
+                                nacc[j]++;
+                            }
+                            LL_curr = LL_prop;
+                        }
+                        else
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) pars_prop[j] = pars[j];
+                        }
+                    }
+                    else
+                    {
+                        for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) pars_prop[j] = pars[j];
+                    }
+                }
                 else
                 {
-                    if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j + 1] = rnorm(1, pars[j + 1], 0.1)[0];
-                    else pars_prop[j + 1] = rnorm(1, pars[j + 1], tempsd[j + 1])[0];
+                    //REMOVAL
+                
+                    //SET new parameter values
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        pars_prop[j] = 0;
+                        indpars[j - 1] = 0;
+                        nattempt_del[j]++;
+                    }
+                    
+                    // calculate log-likelihood – log-prior
+                    LL_prop = loglike(pars_prop, indpars, data);
+                    acc_prop = LL_prop;
+                    acc_curr = LL_curr;
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        acc_curr -= log(sqrt(pars[npars - 1]));
+                        acc_curr -= 0.5 * pow((pars[j] - priors(j, 0)) / sqrt(pars[npars - 1]), 2.0);
+                    }
+                    acc = acc_prop - acc_curr;
+                    
+                    //adjust for proposals
+                    acc -= log(0.5);
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc -= 0.5 * pow(pars[j], 2.0);
+                    
+                    //accept/reject proposal
+                    if(R_finite(acc) != 0)
+                    {
+                        if(log(runif(1, 0.0, 1.0)[0]) < acc)
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                            {
+                                pars[j] = pars_prop[j];
+                                nacc_del[j]++;
+                            }
+                            LL_curr = LL_prop;
+                        }
+                        else
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                            {
+                                pars_prop[j] = pars[j];
+                                indpars[j - 1] = 1;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                        {
+                            pars_prop[j] = pars[j];
+                            indpars[j - 1] = 1;
+                        }
+                    }
                 }
+            }
+            else
+            {
+                //ADDITION
+                
+                //simulate new parameter values
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                {
+                    pars_prop[j] = rnorm(1, 0.0, 1.0)[0];
+                    indpars[j - 1] = 1;
+                    nattempt_add[j]++;
+                }
+                
                 // calculate log-likelihood – log-prior
                 LL_prop = loglike(pars_prop, indpars, data);
                 acc_prop = LL_prop;
-                acc_prop -= log(sqrt(pars_prop[npars - 1]));
-                acc_prop -= 0.5 * pow((pars_prop[j + 1] - priors(j + 1, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
                 acc_curr = LL_curr;
-                acc_curr -= log(sqrt(pars[npars - 1]));
-                acc_curr -= 0.5 * pow((pars[j + 1] - priors(j + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
-                //accept/reject proposal
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                {
+                    acc_prop -= log(sqrt(pars_prop[npars - 1]));
+                    acc_prop -= 0.5 * pow((pars_prop[j] - priors(j, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
+                }
                 acc = acc_prop - acc_curr;
-//                Rprintf("acc%d = %f\n", j + 1, exp(acc));
+                
+                //adjust for proposals
+                acc += log(0.5);
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc += 0.5 * pow(pars_prop[j], 2.0);
+                
+                //accept/reject proposal
                 if(R_finite(acc) != 0)
                 {
                     if(log(runif(1, 0.0, 1.0)[0]) < acc)
                     {
-                        pars[j + 1] = pars_prop[j + 1];
-                        nacc[j + 1]++;
+                        for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                        {
+                            pars[j] = pars_prop[j];
+                            nacc_add[j]++;
+                        }
                         LL_curr = LL_prop;
                     }
-                    else pars_prop[j + 1] = pars[j + 1];
+                    else
+                    {
+                        for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                        {
+                            pars_prop[j] = pars[j];
+                            indpars[j - 1] = 0;
+                        }
+                    }
                 }
-                else pars_prop[j + 1] = pars[j + 1];
+                else
+                {
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        pars_prop[j] = pars[j];
+                        indpars[j - 1] = 0;
+                    }
+                }
             }
         }
         
@@ -251,6 +385,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
             else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
         }
+        nattempt[j]++;
 //        Rprintf("pars_prop_prop[%d] = %f\n", j, pars_prop[j]);
         //check validity
         if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
@@ -297,15 +432,7 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
         }
         //variance component is uniform and so is sucked into normalising constant
         
-        if(R_finite(acc_curr) == 0)
-        {
-            free(pars); pars = NULL;
-            free(pars_prop); pars_prop = NULL;
-            free(tempsd); tempsd = NULL;
-            free(indpars); indpars = NULL;
-            free(nacc); nacc = NULL;
-            stop("Non-finite posterior produced");
-        }
+        if(R_finite(acc_curr) == 0) stop("Non-finite posterior produced");
         
         // save current value of chain into output matrix
         for(j = 0; j < npars; j++) output(i, j) = pars[j];
@@ -318,29 +445,47 @@ NumericMatrix logisticMH (NumericMatrix data, NumericVector ini_pars, int gen_in
             //update proposal variances
             for(j = 0; j < npars; j++)
             {
-                tempsd[j] = adapt_scale(nacc[j], 1000, 0.44, tempsd[j]);
+                tempsd[j] = adapt_scale(nacc[j], nattempt[j], 0.44, tempsd[j]);
 //                Rprintf("tempsd[%d] = %f nacc = %d\n", j, tempsd[j], nacc[j]);
             }
             
             // print some output to screen for book-keeping
-            minnacc = nacc[0];
-            maxnacc = nacc[0];
+            minnacc = ((double) nacc[0]) / ((double) nattempt[0]);
+            maxnacc = minnacc;
             for(j = 1; j < npars; j++)
             {
-                minnacc = (minnacc < nacc[j] ? minnacc:nacc[j]);
-                maxnacc = (maxnacc > nacc[j] ? maxnacc:nacc[j]);
+                tempacc = ((double) nacc[j]) / ((double) nattempt[j]);
+                minnacc = (minnacc < tempacc ? minnacc:tempacc);
+                maxnacc = (maxnacc > tempacc ? maxnacc:tempacc);
             }
-            Rprintf("i = %d min accrate = %f max accrate = %f\n", i + 1, ((double) minnacc) / ((double) 1000), ((double) maxnacc) / ((double) 1000));
-            for(j = 0; j < npars; j++) nacc[j] = 0;
+            minnacc_add = ((double) nacc_add[1]) / ((double) nattempt_add[1]);
+            maxnacc_add = minnacc_add;
+            for(j = 1; j < nregpars; j++)
+            {
+                tempacc = ((double) nacc_add[j + 1]) / ((double) nattempt_add[j + 1]);
+                minnacc_add = (minnacc_add < tempacc ? minnacc_add:tempacc);
+                maxnacc_add = (maxnacc_add > tempacc ? maxnacc_add:tempacc);
+            }
+            minnacc_del = ((double) nacc_del[1]) / ((double) nattempt_del[1]);
+            maxnacc_del = minnacc_del;
+            for(j = 1; j < nregpars; j++)
+            {
+                tempacc = ((double) nacc_del[j + 1]) / ((double) nattempt_del[j + 1]);
+                minnacc_del = (minnacc_del < tempacc ? minnacc_del:tempacc);
+                maxnacc_del = (maxnacc_del > tempacc ? maxnacc_del:tempacc);
+            }
+            Rprintf("i = %d minmove = %f maxmove = %f minadd = %f maxadd = %f mindel = %f maxdel = %f\n", i + 1, minnacc, maxnacc, minnacc_add, maxnacc_add, minnacc_del, maxnacc_del);
+            for(j = 0; j < npars; j++)
+            {
+                nacc[j] = 0;
+                nattempt[j] = 0;
+                nacc_add[j] = 0;
+                nattempt_add[j] = 0;
+                nacc_del[j] = 0;
+                nattempt_del[j] = 0;
+            }
         }
     }
-    
-    //free memory from the heap
-    free(pars); pars = NULL;
-    free(pars_prop); pars_prop = NULL;
-    free(tempsd); tempsd = NULL;
-    free(indpars); indpars = NULL;
-    free(nacc); nacc = NULL;
     
     return(output);
 }
