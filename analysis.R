@@ -15,5 +15,10 @@ source("analysisfunctions.R")
 
 #run mcmc
 bwt.mcmc <- run.mcmc(bwt, "low")
-#bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = T)
+bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = T)
 
+summary.varselect(bwt.mcmc1)
+
+#check against BMA package
+library(BMA)
+bwt.bma <- bic.glm(low ~ ., data = bwt, strict = FALSE, OR = 1000, glm.family = "binomial", factor.type = TRUE)

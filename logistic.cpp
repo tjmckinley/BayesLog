@@ -186,22 +186,15 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             else pars_prop[0] = rnorm(1, pars[0], tempsd[0])[0];
         }
         nattempt[0]++;
-//        Rprintf("pars[%d] = %f pars_prop[%d] = %f\n", 0, pars[0], 0, pars_prop[0]);
-//        Rprintf("priors = %f priors = %f\n", priors(0, 0), priors(0, 1));
         // update log-likelihood
         LL_prop = loglike(pars_prop, indpars, data);
-//        Rprintf("LL_curr = %f LL_prop = %f\n", LL_curr, LL_prop);
         // calculate log-likelihood – log-prior
         acc_prop = LL_prop;
-//        Rprintf("acc_prop = %f\n", acc_prop);
         acc_prop -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars_prop[0] - priors(0, 0), 2.0);
-//        Rprintf("acc_prop = %f\n", acc_prop);
         acc_curr = LL_curr;
         acc_curr -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars[0] - priors(0, 0), 2.0);
         //accept/reject proposal
         acc = acc_prop - acc_curr;
-//        Rprintf("acc_curr = %f acc_prop = %f\n", acc_curr, acc_prop);
-//        Rprintf("acc = %f acc0 = %f\n", acc, exp(acc));
         if(R_finite(acc) != 0)
         {
             if(log(runif(1, 0.0, 1.0)[0]) < acc)
@@ -217,8 +210,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //now propose moves for remaining regression terms
         for(k = 0; k < orignpars; k++)
         {
-//            for(j = 0; j < orignpars; j++) Rprintf("cumfact[%d] = %d fact = %d\n", j, cumfactindex[j], factindex[j]);
-//            getchar();
             if(indpars[cumfactindex[k] - 1] == 1)
             {
                 //if variable is included, then propose to remove or move
