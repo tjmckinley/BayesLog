@@ -64,6 +64,7 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
     
 	#return output
 	model.sim <- as.mcmc.list(model.sim)
+	model.sim <- list(model.sim = model.sim, varselect = varselect)
 	model.sim
 }
 
@@ -120,5 +121,81 @@ createLinear <- function(data, response)
         }
     }
     return(list(data = data1, factindex = factindex, vars = vars))
+}
+
+#function to summarise output
+summary.varselect <- function(output, topmodels = 5, ...)
+{
+    #extract relevant quantities from object
+    varselect <- output$varselect
+    output <- output$model.sim
+    
+    #thin chains
+    output <- window(output, ...)
+    
+    #now extract indicators
+    if(varselect == 0)
+    {
+        output <- lapply(output, as.matrix)
+        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x))])
+        output <- lapply(output, as.mcmc)
+        output <- as.mcmc.list(output)
+        print(summary(output))
+    }
+    else
+    {
+        output <- lapply(output, as.matrix)
+        indicators <- lapply(output, function(x) x[, grep(glob2rx("I_*"), colnames(x))])
+        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x))])
+        output <- lapply(output, as.mcmc)
+        output <- as.mcmc.list(output)
+        #print posterior summaries
+        cat("###########    POSTERIOR SUMMARIES    ###########\n")
+        print(summary(output))
+        #print PPAs for variables
+        cat("\n###########    PPAs for VARIABLES    ###########\n")
+        PPAvar <- sapply(indicators, function(x) apply(x, 2, mean))
+        PPAvar <- t(apply(PPAvar, 1, function(x)
+        {
+            x <- x[!is.na(x)]
+            x <- c(mean(x), sd(x))
+            x <- signif(x, digits = 2)
+            x <- c(as.character(x[1]), paste0("(", x[2], ")"))
+        }))
+        colnames(PPAvar) <- c("Mean", "SD")
+        print(t(PPAvar), quote = F)
+        #print PPAs for models
+        cat("\n###########    PPAs for MODELS    ###########\n")
+        indicators1 <- lapply(indicators, function(x) apply(x, 1, function(y) paste(y, collapse = ".")))
+        indicators2 <- lapply(indicators1, table)
+        indicators2 <- lapply(indicators2, function(x) x / sum(x))
+        #match across chains
+        ind <- unique(do.call("c", indicators1))
+        indmatch2 <- lapply(indicators2, function(x, ind) match(ind, names(x)), ind = ind)
+        indicators2 <- lapply(1:length(indicators2), function(i, x, indmatch) x[[i]][indmatch[[i]]], indmatch = indmatch2, x = indicators2)
+        indicators2 <- do.call("cbind", indicators2)
+        rownames(indicators2) <- ind
+        indicators2 <- cbind(indicators2, t(apply(indicators2, 1, function(x)
+        {
+            x <- x[!is.na(x)]
+            c(mean(x), sd(x))
+        })))
+        #sort by average
+        indicators2 <- indicators2[sort.list(indicators2[, 3], decreasing = T), 3:4][1:topmodels, ]
+        indicators1 <- rownames(indicators2)
+        indicators1 <- sapply(indicators1, function(y) strsplit(y, "\\.")[[1]])
+        indicators2 <- apply(indicators2, 1, function(x)
+        {
+            x <- signif(x, digits = 2)
+            c(as.character(x[1]), paste0("(", x[2], ")"))
+        })
+        indicators1 <- rbind(indicators1, indicators2)
+        colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
+        var <- colnames(output[[1]])[-1]
+        var <- var[-c(length(var), length(var) - 1)]
+        rownames(indicators1) <- c(var, "Mean", "SD")
+        indicators1[indicators1 == "0"] <- ""
+        print(indicators1, quote = F)
+    }
 }
     
