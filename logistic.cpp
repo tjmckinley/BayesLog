@@ -56,7 +56,7 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
@@ -68,6 +68,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // 'niter' is the number of iterations over which to run the chain
     // 'scale' is mixing proportion for adaptive MCMC
     // 'orignpars' is number of variables (disregarding dummy variables)
+    // 'varselect' is an indicator controlling whether variable selection is to be done
     
     //initialise indexing variables
     int i, j, k;
@@ -80,6 +81,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
     Rprintf("Number of regression parameters = %d\n", nregpars);
+    Rprintf("Variable selection (1/0): %d\n", varselect);
     
     // set up output vector of length 'niter' to record chain
     // (append extra column for unnormalised posterior)
@@ -108,7 +110,14 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < npars; i++) pars[i] = ini_pars[i];
         }
             
-        for(i = 0; i < nregpars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+        if(varselect == 1)
+        {
+            for(i = 0; i < nregpars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+        }
+        else
+        {
+            for(i = 0; i < nregpars; i++) indpars[i] = 1;
+        }
         
         if(pars[npars - 1] < 0.0) stop("\nVariance hyperparameter not positive");
         
@@ -160,6 +169,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     double minnacc_add, maxnacc_add;
     double minnacc_del, maxnacc_del;
     
+    //set up proposal probabilities to control variable selection
+    //and mixing
+    double psamp = (varselect == 1 ? 0.5:1.0);
+    
     // run chain
     for(i = 0; i < niter; i++)
     {
@@ -209,7 +222,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             if(indpars[cumfactindex[k] - 1] == 1)
             {
                 //if variable is included, then propose to remove or move
-                if(runif(1, 0.0, 1.0)[0] < 0.5)
+                if(runif(1, 0.0, 1.0)[0] < psamp)
                 {
                     //MOVEMENT
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
@@ -284,7 +297,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc = acc_prop - acc_curr;
                     
                     //adjust for proposals
-                    acc -= log(0.5);
+                    acc -= log(psamp);
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc -= 0.5 * pow(pars[j], 2.0);
                     
                     //accept/reject proposal
@@ -342,7 +355,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 acc = acc_prop - acc_curr;
                 
                 //adjust for proposals
-                acc += log(0.5);
+                acc += log(psamp);
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc += 0.5 * pow(pars_prop[j], 2.0);
                 
                 //accept/reject proposal
@@ -458,23 +471,35 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 minnacc = (minnacc < tempacc ? minnacc:tempacc);
                 maxnacc = (maxnacc > tempacc ? maxnacc:tempacc);
             }
-            minnacc_add = ((double) nacc_add[1]) / ((double) nattempt_add[1]);
-            maxnacc_add = minnacc_add;
-            for(j = 1; j < nregpars; j++)
+            if(varselect == 1)
             {
-                tempacc = ((double) nacc_add[j + 1]) / ((double) nattempt_add[j + 1]);
-                minnacc_add = (minnacc_add < tempacc ? minnacc_add:tempacc);
-                maxnacc_add = (maxnacc_add > tempacc ? maxnacc_add:tempacc);
+                minnacc_add = ((double) nacc_add[1]) / ((double) nattempt_add[1]);
+                maxnacc_add = minnacc_add;
+                for(j = 1; j < nregpars; j++)
+                {
+                    tempacc = ((double) nacc_add[j + 1]) / ((double) nattempt_add[j + 1]);
+                    minnacc_add = (minnacc_add < tempacc ? minnacc_add:tempacc);
+                    maxnacc_add = (maxnacc_add > tempacc ? maxnacc_add:tempacc);
+                }
+                minnacc_del = ((double) nacc_del[1]) / ((double) nattempt_del[1]);
+                maxnacc_del = minnacc_del;
+                for(j = 1; j < nregpars; j++)
+                {
+                    tempacc = ((double) nacc_del[j + 1]) / ((double) nattempt_del[j + 1]);
+                    minnacc_del = (minnacc_del < tempacc ? minnacc_del:tempacc);
+                    maxnacc_del = (maxnacc_del > tempacc ? maxnacc_del:tempacc);
+                }
+                Rprintf("i = %d minmove = %f maxmove = %f minadd = %f maxadd = %f mindel = %f maxdel = %f\n", i + 1, minnacc, maxnacc, minnacc_add, maxnacc_add, minnacc_del, maxnacc_del);
             }
-            minnacc_del = ((double) nacc_del[1]) / ((double) nattempt_del[1]);
-            maxnacc_del = minnacc_del;
-            for(j = 1; j < nregpars; j++)
+            else
             {
-                tempacc = ((double) nacc_del[j + 1]) / ((double) nattempt_del[j + 1]);
-                minnacc_del = (minnacc_del < tempacc ? minnacc_del:tempacc);
-                maxnacc_del = (maxnacc_del > tempacc ? maxnacc_del:tempacc);
+                for(j = 0; j < nregpars; j++)
+                {
+                    if(nattempt_add[j] > 0 || nattempt_del[j] > 0) stop("Incorrect addition/removal move");
+                }
+                Rprintf("i = %d minmove = %f maxmove = %f\n", i + 1, minnacc, maxnacc);
             }
-            Rprintf("i = %d minmove = %f maxmove = %f minadd = %f maxadd = %f mindel = %f maxdel = %f\n", i + 1, minnacc, maxnacc, minnacc_add, maxnacc_add, minnacc_del, maxnacc_del);
+                
             for(j = 0; j < npars; j++)
             {
                 nacc[j] = 0;

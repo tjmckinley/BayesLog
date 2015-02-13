@@ -15,4 +15,5 @@ source("analysisfunctions.R")
 
 #run mcmc
 bwt.mcmc <- run.mcmc(bwt, "low")
+#bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = T)
 
