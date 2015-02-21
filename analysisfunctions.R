@@ -77,7 +77,7 @@ createLinear <- function(data, response)
     if(is.factor(data1[, 1])) data1[, 1] <- as.numeric(data1[, 1]) - 1
     
     #remove response variable
-    data <- data[, y != response]
+    data <- data[, y != response, drop = F]
     y <- y[y != response]
     
     #record factor index
@@ -145,8 +145,8 @@ summary.varselect <- function(output, topmodels = 5, ...)
     else
     {
         output <- lapply(output, as.matrix)
-        indicators <- lapply(output, function(x) x[, grep(glob2rx("I_*"), colnames(x))])
-        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x))])
+        indicators <- lapply(output, function(x) x[, grep(glob2rx("I_*"), colnames(x)), drop = F])
+        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x)), drop = F])
         output <- lapply(output, as.mcmc)
         output <- as.mcmc.list(output)
         #print posterior summaries
@@ -155,6 +155,11 @@ summary.varselect <- function(output, topmodels = 5, ...)
         #print PPAs for variables
         cat("\n###########    PPAs for VARIABLES    ###########\n")
         PPAvar <- sapply(indicators, function(x) apply(x, 2, mean))
+        if(!is.matrix(PPAvar))
+        {
+            PPAvar <- matrix(PPAvar, nrow = 1)
+            rownames(PPAvar) <- colnames(indicators[[1]])
+        }
         PPAvar <- t(apply(PPAvar, 1, function(x)
         {
             x <- x[!is.na(x)]
