@@ -17,6 +17,92 @@ double adapt_scale(int nacc, int niter, double desacc, double propscale)
     return propscale1;
 }
 
+//function to calculate posterior mean and variance
+void calc_meanvar(int i, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, IntegerVector *indpars, NumericMatrix posterior)
+{
+    int j, k, m;
+
+    //update means and variances for adaptive proposal
+    if((i + 1) == ninitial)
+    {
+        //first: means
+        for(j = 0; j < npars; j++)
+        {
+            (*tempmn)[j] = 0;
+            for(k = 0; k <= i; k++)
+            {
+                if((*indpars)[j - 1] == 1)
+                {
+                    (*tempcounts)[j]++;
+                    (*tempmn)[j] += posterior(k, j);
+                }
+            }
+            if((*tempcounts)[j] > 1) (*tempmn)[j] = (*tempmn)[j] / ((double) (*tempcounts)[j]);
+            else (*tempmn)[j] = 0.0;
+        }
+        //second: variances
+        for(j = 0; j < npars; j++)
+        {
+            (*tempvar)[j] = 0;
+            for(k = 0; k <= i; k++)
+            {
+                if((*indpars)[j - 1] == 1) (*tempvar)[j] += pow(posterior(k, j), 2.0);
+            }
+            if((*tempcounts)[j] > 1)
+            {
+                (*tempvar)[j] = (*tempvar)[j] - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
+                (*tempvar)[j] = (*tempvar)[j] / ((double) ((*tempcounts)[j] - 1));
+            }
+            else (*tempvar)[j] = 1.0;
+        }
+    }
+    else
+    {
+        //start recursively updating variance 
+        for(j = 0; j < npars; j++)
+        {
+            if((*indpars)[j - 1] == 1)
+            {
+                (*tempcounts)[j]++;
+                if((*tempcounts)[j] > 2) (*tempvar)[j] = ((*tempvar)[j] * ((*tempcounts)[j] - 2)) + (((*tempcounts)[j] - 1) * pow((*tempmn)[j], 2.0));
+            }
+        }
+        //recursively update mean and variance
+        for(j = 0; j < npars; j++)
+        {
+            if((*indpars)[j - 1] == 1)
+            {
+                if((*tempcounts)[j] > 2)
+                {
+                    (*tempmn)[j] = ((*tempmn)[j] * ((*tempcounts)[j] - 1) + posterior(i, j)) / ((double) (*tempcounts)[j]);
+                    (*tempvar)[j] += pow(posterior(i, j), 2.0) - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
+                    (*tempvar)[j] = (*tempvar)[j] / ((double) (*tempcounts)[j] - 1);
+                }
+                else
+                {
+                    if((*tempcounts)[j] == 2)
+                    {
+                        //following should be fine since initialised at zero
+                        (*tempmn)[j] = 0;
+                        for(k = 0; k <= i; k++) (*tempmn)[j] += posterior(k, j);
+                        (*tempmn)[j] = (*tempmn)[j] / ((double) (*tempcounts)[j]);
+                        (*tempvar)[j] = 0;
+                        for(k = 0; k <= i; k++) (*tempvar)[j] += pow(posterior(k, j), 2.0);
+                        (*tempvar)[j] = (*tempvar)[j] - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
+                        (*tempvar)[j] = (*tempvar)[j] / ((double) ((*tempcounts)[j] - 1));
+                    }
+                    else
+                    {
+                        (*tempmn)[j] = 0.0;
+                        (*tempvar)[j] = 1.0;
+                    }
+                }
+            }
+        }
+    }
+    return;
+}
+
 // function for calculating the log-likelihood
 double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 {
@@ -56,7 +142,7 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
@@ -69,6 +155,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // 'scale' is mixing proportion for adaptive MCMC
     // 'orignpars' is number of variables (disregarding dummy variables)
     // 'varselect' is an indicator controlling whether variable selection is to be done
+    // 'ninitial' is the number of ietrations to run before starting to calculate the posterior
+    //  mean and variance for use in proposal steps
     
     //initialise indexing variables
     int i, j, k;
@@ -82,6 +170,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Scale for adaptive proposal = %f\n", scale);
     Rprintf("Number of regression parameters = %d\n", nregpars);
     Rprintf("Variable selection (1/0): %d\n", varselect);
+    Rprintf("Number of initial iterations before change in add/rem proposals: %d\n", ninitial);
     
     // set up output vector of length 'niter' to record chain
     // (append extra column for unnormalised posterior)
@@ -152,6 +241,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     for(j = 0; j < nregpars; j++) Rprintf("indpars[%d] = %d\n", j, indpars[j]);
     Rprintf("\n");
     
+    //set up vectors for recording posterior mean and variances
+    NumericVector tempmn(npars);
+    NumericVector tempvar(npars, 1.0);
+    IntegerVector tempcounts(npars);
+    
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0);
     NumericVector tempsd(npars, 0.1);
@@ -179,7 +273,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
         
         // propose new value for intercept
-        if((i + 1) <= 100) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
+        if((i + 1) <= ninitial) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
         else
         {
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
@@ -219,7 +313,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         // propose new value for parameter
-                        if((i + 1) <= 100) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+                        if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
                         else
                         {
                             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
@@ -289,7 +383,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     
                     //adjust for proposals
                     acc -= log(psamp);
-                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc -= 0.5 * pow(pars[j], 2.0);
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        acc -= (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars[j] - tempmn[j], 2.0));
+                    }
                     
                     //accept/reject proposal
                     if(R_finite(acc) != 0)
@@ -329,7 +426,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 //simulate new parameter values
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
-                    pars_prop[j] = rnorm(1, 0.0, 1.0)[0];
+                    pars_prop[j] = rnorm(1, tempmn[j], sqrt(1.5 * tempvar[j]))[0];
                     indpars[j - 1] = 1;
                     nattempt_add[j]++;
                 }
@@ -347,7 +444,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 
                 //adjust for proposals
                 acc += log(psamp);
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc += 0.5 * pow(pars_prop[j], 2.0);
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                {
+                    acc += (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars_prop[j] - tempmn[j], 2.0));
+                }
                 
                 //accept/reject proposal
                 if(R_finite(acc) != 0)
@@ -383,7 +483,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         
         //now propose update for variance hyperparameter
         j = npars - 1;
-        if((i + 1) <= 100) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+        if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
         else
         {
             if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
@@ -504,6 +604,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 nattempt_del[j] = 0;
             }
         }
+        
+        // record posterior mean and variances for use in addition/removal steps
+        if ((i + 1) >= ninitial) calc_meanvar(i, ninitial, npars, &tempmn, &tempvar, &tempcounts, &indpars, output);
     }
     
     return(output);

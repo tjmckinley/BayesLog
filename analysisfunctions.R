@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F)
+run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100)
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -56,7 +56,7 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0))
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial)
         #add names
         colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
