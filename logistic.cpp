@@ -400,10 +400,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             acc_curr = 0.0;
             for(k = 0; k < nregpars; k++)
             {
-                acc_prop -= log(sqrt(pars[npars - 1]));
-                acc_prop -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
-                acc_curr -= log(sqrt(pars_prop[npars - 1]));
-                acc_curr -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
+                if(indpars[k] == 1)
+                {
+                    acc_prop -= log(sqrt(pars[npars - 1]));
+                    acc_prop -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
+                    acc_curr -= log(sqrt(pars_prop[npars - 1]));
+                    acc_curr -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
+                }
             }
             //accept/reject proposal
             acc = acc_prop - acc_curr;
