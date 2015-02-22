@@ -382,7 +382,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc = acc_prop - acc_curr;
                     
                     //adjust for proposals
-                    acc -= log(psamp);
+                    acc -= log(1.0 - psamp);
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         acc -= (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars[j] - tempmn[j], 2.0));
@@ -443,7 +443,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 acc = acc_prop - acc_curr;
                 
                 //adjust for proposals
-                acc += log(psamp);
+                acc += log(1.0 - psamp);
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     acc += (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars_prop[j] - tempmn[j], 2.0));
