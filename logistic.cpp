@@ -518,31 +518,40 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(j = 0; j < (random == 1 ? npars:(npars - 1)); j++) tempsd[j] = adapt_scale(nacc[j], nattempt[j], 0.44, tempsd[j]);
             
             // print some output to screen for book-keeping
-            minnacc = ((double) nacc[0]) / ((double) nattempt[0]);
+            minnacc = (nattempt[0] > 0 ? (((double) nacc[0]) / ((double) nattempt[0])):0.0);
             maxnacc = minnacc;
             for(j = 1; j < (random == 1 ? npars:(npars - 1)); j++)
             {
                 tempacc = ((double) nacc[j]) / ((double) nattempt[j]);
-                minnacc = (minnacc < tempacc ? minnacc:tempacc);
-                maxnacc = (maxnacc > tempacc ? maxnacc:tempacc);
+                if(R_finite(tempacc) != 0)
+                {
+                    minnacc = (minnacc < tempacc ? minnacc:tempacc);
+                    maxnacc = (maxnacc > tempacc ? maxnacc:tempacc);
+                }
             }
             if(varselect == 1)
             {
-                minnacc_add = ((double) nacc_add[1]) / ((double) nattempt_add[1]);
+                minnacc_add = (nattempt_add[1] > 0 ? (((double) nacc_add[1]) / ((double) nattempt_add[1])):0.0);
                 maxnacc_add = minnacc_add;
                 for(j = 1; j < nregpars; j++)
                 {
                     tempacc = ((double) nacc_add[j + 1]) / ((double) nattempt_add[j + 1]);
-                    minnacc_add = (minnacc_add < tempacc ? minnacc_add:tempacc);
-                    maxnacc_add = (maxnacc_add > tempacc ? maxnacc_add:tempacc);
+                    if(R_finite(tempacc) != 0)
+                    {
+                        minnacc_add = (minnacc_add < tempacc ? minnacc_add:tempacc);
+                        maxnacc_add = (maxnacc_add > tempacc ? maxnacc_add:tempacc);
+                    }
                 }
-                minnacc_del = ((double) nacc_del[1]) / ((double) nattempt_del[1]);
+                minnacc_del = (nattempt_del[1] > 0 ? (((double) nacc_del[1]) / ((double) nattempt_del[1])):0.0);
                 maxnacc_del = minnacc_del;
                 for(j = 1; j < nregpars; j++)
                 {
                     tempacc = ((double) nacc_del[j + 1]) / ((double) nattempt_del[j + 1]);
-                    minnacc_del = (minnacc_del < tempacc ? minnacc_del:tempacc);
-                    maxnacc_del = (maxnacc_del > tempacc ? maxnacc_del:tempacc);
+                    if(R_finite(tempacc) != 0)
+                    {
+                        minnacc_del = (minnacc_del < tempacc ? minnacc_del:tempacc);
+                        maxnacc_del = (maxnacc_del > tempacc ? maxnacc_del:tempacc);
+                    }
                 }
                 Rprintf("i = %d minmove = %f maxmove = %f minadd = %f maxadd = %f mindel = %f maxdel = %f\n", i + 1, minnacc, maxnacc, minnacc_add, maxnacc_add, minnacc_del, maxnacc_del);
             }
