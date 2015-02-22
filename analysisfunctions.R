@@ -186,6 +186,7 @@ summary.varselect <- function(output, topmodels = 5, ...)
             c(mean(x), sd(x))
         })))
         #sort by average
+        topmodels <- ifelse(topmodels > nrow(indicators2), nrow(indicators2), topmodels) 
         indicators2 <- indicators2[sort.list(indicators2[, 3], decreasing = T), 3:4][1:topmodels, ]
         indicators1 <- rownames(indicators2)
         indicators1 <- sapply(indicators1, function(y) strsplit(y, "\\.")[[1]])
