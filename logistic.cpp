@@ -266,13 +266,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
         
         // propose new value for intercept
-        if((i + 1) <= ninitial) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
-        else
-        {
-            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
-            else pars_prop[0] = rnorm(1, pars[0], tempsd[0])[0];
-        }
+        if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
+        else pars_prop[0] = rnorm(1, pars[0], tempsd[0])[0];
         nattempt[0]++;
+        
         // update log-likelihood
         LL_prop = loglike(pars_prop, indpars, data);
         // calculate log-likelihood – log-prior
@@ -308,12 +305,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         // propose new value for parameter
-                        if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-                        else
-                        {
-                            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-                            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
-                        }
+                        if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+                        else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
                         nattempt[j]++;
                     }
                     // calculate log-likelihood – log-prior
@@ -463,13 +456,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         {
             //now propose update for variance hyperparameter
             j = npars - 1;
-            if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-            else
-            {
-                if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-                else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
-            }
+            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
             nattempt[j]++;
+            
             //check validity
             if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
             {
