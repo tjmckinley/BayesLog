@@ -122,19 +122,11 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
             //add contribution for each covariate
             nu += pars[j] * indpars[j - 1] * data(i, j);
         }
-//        if(R_finite(nu) == 0) Rprintf("nu %d = %f\n", j, nu);
         //convert to correct scale
         nu = exp(nu) / (1.0 + exp(nu));
-//        if(R_finite(nu) == 0) Rprintf("nu2 %d = %f\n", j, nu);
         //calculate log-likelihood contribution
         nu = (data(i, 0) == 0 ? (1.0 - nu):nu);
-//        if(R_finite(nu) == 0) Rprintf("nu3 %d = %f\n", j, nu);
         LL += log(nu);
-//        if(R_finite(LL) == 0)
-//        {
-//            Rprintf("nu4 %d = %f Y = %f\n", j, nu, data(i, 0));
-//            getchar();
-//        }
     }
     return LL;
 }
