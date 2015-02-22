@@ -187,6 +187,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         {
             for(i = 0; i < (npars - 1); i++) pars[i] = rnorm(1, 0.0, 1.0)[0];
             pars[npars - 1] = runif(1, 0.0, 20.0)[0];
+            pars[npars - 1] = pow(pars[npars - 1], 2.0);
         }
         else
         {
@@ -454,16 +455,19 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         
         if(random == 1)
         {
-            //now propose update for variance hyperparameter
+            //now propose update for SD hyperparameter
             j = npars - 1;
-            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
+            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, sqrt(pars[j]), 0.1)[0];
+            else pars_prop[j] = rnorm(1, sqrt(pars[j]), tempsd[j])[0];
             nattempt[j]++;
             
-            //check validity
-            if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
+            //check validity of SD hyperparameter
+            if(pars_prop[j] > priors(npars - 1, 0) && pars_prop[j] < priors(npars - 1, 1))
             {
-                // calculate log-prior
+                //convert to variance for consistency
+                pars_prop[j] = pow(pars_prop[j], 2.0);
+                
+                // calculate log-prior for regression terms
                 acc_prop = 0.0;
                 acc_curr = 0.0;
                 for(k = 0; k < nregpars; k++)
@@ -474,6 +478,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         acc_curr += R::dnorm(pars[k + 1], priors(k + 1, 0), sqrt(pars[npars - 1]), 1);
                     }
                 }
+                //priors for SD cancel
                 //proposals cancel
                 
                 //accept/reject proposal
