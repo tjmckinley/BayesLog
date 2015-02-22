@@ -218,7 +218,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(pars[npars - 1]), 1);
         }
         //add variance component
-        if(random == 1) acc_curr += R::dunif(pars[npars - 1], priors(npars - 1, 0), priors(npars - 1, 1), 1);
+        if(random == 1) acc_curr += R::dunif(sqrt(pars[npars - 1]), priors(npars - 1, 0), priors(npars - 1, 1), 1);
         if(R_finite(acc_curr) != 0) ind = 1;
         else
         {
@@ -502,7 +502,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(pars[npars - 1]), 1);
         }
         //add variance component
-        if(random == 1) acc_curr += R::dunif(pars[npars - 1], priors(npars - 1, 0), priors(npars - 1, 1), 1);
+        if(random == 1) acc_curr += R::dunif(sqrt(pars[npars - 1]), priors(npars - 1, 0), priors(npars - 1, 1), 1);
         
         if(R_finite(acc_curr) == 0) stop("Non-finite posterior produced");
         
