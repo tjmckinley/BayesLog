@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100)
+run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = T)
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -23,7 +23,7 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
     factindex <- as.numeric(table(dat$factindex))
     cumfactindex <- c(0, cumsum(factindex)[-length(factindex)]) + 1
     vars <- dat$vars
-    dat <- dat$data	
+    dat <- dat$data
 	
 	#convert data to matrix
 	dat <- as.matrix(dat)
@@ -49,16 +49,16 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
 	}
 	
 	#set priors
-	priors <- matrix(c(rep(c(0, 1), times = npars + 1), 0, 20), ncol = 2, byrow = T)
-	priors[1, 2] <- 10000
+	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), 0, 20), ncol = 2, byrow = T)
 	
 	#run model
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial)
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, ifelse(random, 1, 0))
         #add names
         colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
+        if(random == 0) model.sim[[j]] <- model.sim[[j]][, -which(colnames(model.sim[[j]]) == "sigma2")]
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
     
@@ -198,7 +198,8 @@ summary.varselect <- function(output, topmodels = 5, ...)
         indicators1 <- rbind(indicators1, indicators2)
         colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
         var <- colnames(output[[1]])[-1]
-        var <- var[-c(length(var), length(var) - 1)]
+        if(length(which(var == "sigma2")) > 0) var <- var[-which(var == "sigma2")]
+        var <- var[-c(length(var))]
         rownames(indicators1) <- c(var, "Mean", "SD")
         indicators1[indicators1 == "0"] <- ""
         print(indicators1, quote = F)

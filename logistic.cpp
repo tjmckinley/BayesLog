@@ -142,7 +142,7 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
@@ -157,6 +157,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // 'varselect' is an indicator controlling whether variable selection is to be done
     // 'ninitial' is the number of ietrations to run before starting to calculate the posterior
     //  mean and variance for use in proposal steps
+    // 'random' is an indicator corresponding to whether a "fixed" or "random" effect required
     
     //initialise indexing variables
     int i, j, k;
@@ -170,6 +171,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Scale for adaptive proposal = %f\n", scale);
     Rprintf("Number of regression parameters = %d\n", nregpars);
     Rprintf("Variable selection (1/0): %d\n", varselect);
+    Rprintf("Random effect used (1/0): %d\n", random);
     Rprintf("Number of initial iterations before change in add/rem proposals: %d\n", ninitial);
     
     // set up output vector of length 'niter' to record chain
@@ -198,6 +200,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         {
             for(i = 0; i < npars; i++) pars[i] = ini_pars[i];
         }
+        //set variance component if fixed effect
+        if(random == 0) pars[npars - 1] = priors(0, 1);
             
         if(varselect == 1)
         {
@@ -215,17 +219,14 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         // calculate log-likelihood – log-prior
         acc_curr = LL_curr;
         //add prior for intercept
-        acc_curr -= 0.5 * pow((pars[0] - priors(0, 0)) / sqrt(priors(0, 1)), 2.0);
+        acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1)
-            {
-                acc_curr -= log(sqrt(pars[npars - 1]));
-                acc_curr -= 0.5 * pow((pars[j + 1] - priors(j + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
-            }
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(pars[npars - 1]), 1);
         }
-        //variance component is uniform and so is sucked into normalising constant
+        //add variance component
+        if(random == 1) acc_curr += R::dunif(pars[npars - 1], priors(npars - 1, 0), priors(npars - 1, 1), 1);
         if(R_finite(acc_curr) != 0) ind = 1;
         else
         {
@@ -284,9 +285,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         LL_prop = loglike(pars_prop, indpars, data);
         // calculate log-likelihood – log-prior
         acc_prop = LL_prop;
-        acc_prop -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars_prop[0] - priors(0, 0), 2.0);
+        acc_prop += R::dnorm(pars_prop[0], priors(0, 0), sqrt(priors(0, 1)), 1);
         acc_curr = LL_curr;
-        acc_curr -= (1.0 / (2.0 * sqrt(priors(0, 1)))) * pow(pars[0] - priors(0, 0), 2.0);
+        acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
+        //proposals cancel
+        
         //accept/reject proposal
         acc = acc_prop - acc_curr;
         if(R_finite(acc) != 0)
@@ -327,14 +330,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
-                        acc_prop -= log(sqrt(pars_prop[npars - 1]));
-                        acc_prop -= 0.5 * pow((pars_prop[j] - priors(j, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
-                        acc_curr -= log(sqrt(pars[npars - 1]));
-                        acc_curr -= 0.5 * pow((pars[j] - priors(j, 0)) / sqrt(pars[npars - 1]), 2.0);
+                        acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sqrt(pars[npars - 1]), 1);
+                        acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(pars[npars - 1]), 1);
                     }
                     acc = acc_prop - acc_curr;
-                    
-                    //proposals cancel out
+                    //proposals cancel
                     
                     //accept/reject proposal
                     if(R_finite(acc) != 0)
@@ -365,7 +365,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     //SET new parameter values
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
-                        pars_prop[j] = 0;
+                        pars_prop[j] = 0.0;
                         indpars[j - 1] = 0;
                         nattempt_del[j]++;
                     }
@@ -374,19 +374,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     LL_prop = loglike(pars_prop, indpars, data);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
-                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                    {
-                        acc_curr -= log(sqrt(pars[npars - 1]));
-                        acc_curr -= 0.5 * pow((pars[j] - priors(j, 0)) / sqrt(pars[npars - 1]), 2.0);
-                    }
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(pars[npars - 1]), 1);
                     acc = acc_prop - acc_curr;
                     
                     //adjust for proposals
                     acc -= log(1.0 - psamp);
-                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                    {
-                        acc -= (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars[j] - tempmn[j], 2.0));
-                    }
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc += R::dnorm(pars[j], tempmn[j], sqrt(tempvar[j]), 1);
                     
                     //accept/reject proposal
                     if(R_finite(acc) != 0)
@@ -426,7 +419,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 //simulate new parameter values
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
-                    pars_prop[j] = rnorm(1, tempmn[j], sqrt(1.5 * tempvar[j]))[0];
+                    pars_prop[j] = rnorm(1, tempmn[j], sqrt(tempvar[j]))[0];
                     indpars[j - 1] = 1;
                     nattempt_add[j]++;
                 }
@@ -435,19 +428,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 LL_prop = loglike(pars_prop, indpars, data);
                 acc_prop = LL_prop;
                 acc_curr = LL_curr;
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                {
-                    acc_prop -= log(sqrt(pars_prop[npars - 1]));
-                    acc_prop -= 0.5 * pow((pars_prop[j] - priors(j, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
-                }
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sqrt(pars[npars - 1]), 1);
                 acc = acc_prop - acc_curr;
                 
                 //adjust for proposals
                 acc += log(1.0 - psamp);
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                {
-                    acc += (log(sqrt(tempvar[j] * 1.5)) + (1.0 / (2.0 * tempvar[j] * 1.5)) * pow(pars_prop[j] - tempmn[j], 2.0));
-                }
+                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++) acc -= R::dnorm(pars_prop[j], tempmn[j], sqrt(tempvar[j]), 1);
                 
                 //accept/reject proposal
                 if(R_finite(acc) != 0)
@@ -481,63 +467,60 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             }
         }
         
-        //now propose update for variance hyperparameter
-        j = npars - 1;
-        if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-        else
+        if(random == 1)
         {
-            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
-            else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
-        }
-        nattempt[j]++;
-//        Rprintf("pars_prop_prop[%d] = %f\n", j, pars_prop[j]);
-        //check validity
-        if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
-        {
-//            Rprintf("pars_prop[%d] = %f\n", j, pars_prop[j]);
-            // calculate log-prior
-            acc_prop = 0.0;
-            acc_curr = 0.0;
-            for(k = 0; k < nregpars; k++)
+            //now propose update for variance hyperparameter
+            j = npars - 1;
+            if((i + 1) <= ninitial) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+            else
             {
-                if(indpars[k] == 1)
-                {
-                    acc_prop -= log(sqrt(pars[npars - 1]));
-                    acc_prop -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
-                    acc_curr -= log(sqrt(pars_prop[npars - 1]));
-                    acc_curr -= 0.5 * pow((pars[k + 1] - priors(k + 1, 0)) / sqrt(pars_prop[npars - 1]), 2.0);
-                }
+                if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[j] = rnorm(1, pars[j], 0.1)[0];
+                else pars_prop[j] = rnorm(1, pars[j], tempsd[j])[0];
             }
-            //accept/reject proposal
-            acc = acc_prop - acc_curr;
-//            Rprintf("acc%d = %f\n", j, exp(acc));
-            if(R_finite(acc) != 0)
+            nattempt[j]++;
+            //check validity
+            if(sqrt(pars_prop[j]) > priors(npars - 1, 0) && sqrt(pars_prop[j]) < priors(npars - 1, 1))
             {
-                if(log(runif(1, 0.0, 1.0)[0]) < acc)
+                // calculate log-prior
+                acc_prop = 0.0;
+                acc_curr = 0.0;
+                for(k = 0; k < nregpars; k++)
                 {
-                    pars[j] = pars_prop[j];
-                    nacc[j]++;
+                    if(indpars[k] == 1)
+                    {
+                        acc_prop += R::dnorm(pars[k + 1], priors(k + 1, 0), sqrt(pars_prop[npars - 1]), 1);
+                        acc_curr += R::dnorm(pars[k + 1], priors(k + 1, 0), sqrt(pars[npars - 1]), 1);
+                    }
+                }
+                //proposals cancel
+                
+                //accept/reject proposal
+                acc = acc_prop - acc_curr;
+                if(R_finite(acc) != 0)
+                {
+                    if(log(runif(1, 0.0, 1.0)[0]) < acc)
+                    {
+                        pars[j] = pars_prop[j];
+                        nacc[j]++;
+                    }
+                    else pars_prop[j] = pars[j];
                 }
                 else pars_prop[j] = pars[j];
             }
             else pars_prop[j] = pars[j];
         }
-        else pars_prop[j] = pars[j];
         
         //calculate current unnormalised posterior
         acc_curr = LL_curr;
         //add prior for intercept
-        acc_curr -= 0.5 * pow((pars[0] - priors(0, 0)) / sqrt(priors(0, 1)), 2.0);
+        acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1)
-            {
-                acc_curr -= log(sqrt(pars[npars - 1]));
-                acc_curr -= 0.5 * pow((pars[j + 1] - priors(j + 1, 0)) / sqrt(pars[npars - 1]), 2.0);
-            }
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(pars[npars - 1]), 1);
         }
-        //variance component is uniform and so is sucked into normalising constant
+        //add variance component
+        if(random == 1) acc_curr += R::dunif(pars[npars - 1], priors(npars - 1, 0), priors(npars - 1, 1), 1);
         
         if(R_finite(acc_curr) == 0) stop("Non-finite posterior produced");
         
@@ -550,16 +533,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         if((i + 1) % 1000 == 0)
         {
             //update proposal variances
-            for(j = 0; j < npars; j++)
-            {
-                tempsd[j] = adapt_scale(nacc[j], nattempt[j], 0.44, tempsd[j]);
-//                Rprintf("tempsd[%d] = %f nacc = %d\n", j, tempsd[j], nacc[j]);
-            }
+            for(j = 0; j < (random == 1 ? npars:(npars - 1)); j++) tempsd[j] = adapt_scale(nacc[j], nattempt[j], 0.44, tempsd[j]);
             
             // print some output to screen for book-keeping
             minnacc = ((double) nacc[0]) / ((double) nattempt[0]);
             maxnacc = minnacc;
-            for(j = 1; j < npars; j++)
+            for(j = 1; j < (random == 1 ? npars:(npars - 1)); j++)
             {
                 tempacc = ((double) nacc[j]) / ((double) nattempt[j]);
                 minnacc = (minnacc < tempacc ? minnacc:tempacc);
