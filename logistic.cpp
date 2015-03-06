@@ -134,14 +134,14 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma2, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
     // 'cumfactindex' is a vector indexing start point for each variable
     //      (accounting for different numbers of levels)
     // 'ini_pars' is a vector of initial values for the unknown parameters
-    // 'ini_sigma2' is a vector of initial values for the unknown random effects components
+    // 'ini_sigma' is a vector of initial values for the unknown random effects components
     // 'gen_inits' is an indicator controlling whether initial values need to be generated
     // 'priors' is an (npars x 2) matrix containing the mean and var for Normal priors
     // 'niter' is the number of iterations over which to run the chain
@@ -167,9 +167,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Variable selection (1/0): %d\n", varselect);
     Rprintf("Number of initial iterations before change in add/rem proposals: %d\n", ninitial);
     
-    if(random == 0) Rprintf("\nFIXED variance components used\n");
-    if(random == 1) Rprintf("\nGLOBAL RANDOM variance components used\n");
-    if(random == 2) Rprintf("\nLOCAL RANDOM variance components used\n");
+    if(random == 0) Rprintf("\nFIXED SD components used\n");
+    if(random == 1) Rprintf("\nGLOBAL RANDOM SD components used\n");
+    if(random == 2) Rprintf("\nLOCAL RANDOM SD components used\n");
     
     // set up output vector of length 'niter' to record chain
     // (append extra column for unnormalised posterior)
@@ -182,11 +182,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // initialise chain and set up vector to hold proposals
     NumericVector pars(npars);
     NumericVector pars_prop(npars);
-    NumericVector sigma2(nregpars);
-    NumericVector sigma2_prop(nregpars);
+    NumericVector sigma(nregpars);
+    NumericVector sigma_prop(nregpars);
     
     //declare variables
-    double LL_curr, LL_prop, acc_curr, acc_prop, acc, sigma2full, sigma2full_prop;
+    double LL_curr, LL_prop, acc_curr, acc_prop, acc, sigmafull, sigmafull_prop;
     
     //generate or read in initial values
     k = 0;
@@ -199,34 +199,29 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < npars; i++) pars[i] = rnorm(1, 0.0, 1.0)[0];
             if(random == 1)
             {
-                sigma2full = runif(1, 0.0, 20.0)[0];
-                sigma2full = pow(sigma2full, 2.0);
-                for(i = 0; i < nregpars; i++) sigma2[i] = sigma2full;
+                sigmafull = runif(1, 0.0, 20.0)[0];
+                for(i = 0; i < nregpars; i++) sigma[i] = sigmafull;
             }
             if(random == 2)
             {
-                for(i = 0; i < nregpars; i++)
-                {
-                    sigma2[i] = runif(1, 0.0, 20.0)[0];
-                    sigma2[i] = pow(sigma2[i], 2.0);
-                }
+                for(i = 0; i < nregpars; i++) sigma[i] = runif(1, 0.0, 20.0)[0];
             }
         }
         else
         {
             for(i = 0; i < npars; i++) pars[i] = ini_pars[i];
-            for(i = 0; i < nregpars; i++) sigma2[i] = ini_sigma2[i];
+            for(i = 0; i < nregpars; i++) sigma[i] = ini_sigma[i];
             if(random == 1)
             {
-                sigma2full = sigma2[0];
+                sigmafull = sigma[0];
                 //reset just in case error in input
-                for(i = 0; i < nregpars; i++) sigma2[i] = sigma2full;
+                for(i = 0; i < nregpars; i++) sigma[i] = sigmafull;
             }   
         }
         //set variance component if fixed effect
         if(random == 0)
         {
-            for(i = 0; i < nregpars; i++) sigma2[i] = priors(0, 1);
+            for(i = 0; i < nregpars; i++) sigma[i] = sqrt(priors(0, 1));
         }
             
         if(varselect == 1)
@@ -238,7 +233,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < nregpars; i++) indpars[i] = 1;
         }
         
-        for(i = 0; i < nregpars; i++) if(sigma2[i] < 0.0) stop("\nVariance hyperparameter %d not positive\n", i);
+        for(i = 0; i < nregpars; i++) if(sigma[i] < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
         
         //check the initial values produce a finite log-posterior
         LL_curr = loglike(pars, indpars, data);
@@ -249,16 +244,19 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(sigma2[j]), 1);
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
         }
         //add variance component
         if(random > 0)
         {
             if(random == 2)
             {
-                for(j = 0; j < nregpars; j++) if(indpars[j] == 1) acc_curr += R::dunif(sqrt(sigma2[j]), priors(npars, 0), priors(npars, 1), 1);
+                for(j = 0; j < nregpars; j++)
+                {
+                    if(indpars[j] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
+                }
             }
-            else acc_curr += R::dunif(sqrt(sigma2full), priors(npars, 0), priors(npars, 1), 1);
+            else acc_curr += R::dunif(sqrt(sigmafull), priors(npars, 0), priors(npars, 1), 1);
         }
         if(R_finite(acc_curr) != 0) ind = 1;
         else
@@ -277,12 +275,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     {
         if(random == 2)
         {
-            Rprintf("\nInitial variance components:\n");
-            for(j = 0; j < nregpars; j++) Rprintf("sigma2[%d] = %f\n", j, sigma2[j]);
+            Rprintf("\nInitial SD components:\n");
+            for(j = 0; j < nregpars; j++) Rprintf("sigma[%d] = %f\n", j, sigma[j]);
         }
-        else Rprintf("\nInitial variance component: %f\n", sigma2full);
+        else Rprintf("\nInitial SD component: %f\n", sigmafull);
     }
-    else Rprintf("\nFixed variance component: %f\n", priors(0, 1));
+    else Rprintf("\nFixed SD component: %f\n", priors(0, 1));
     Rprintf("\n");
     
     //set up vectors for recording posterior mean and variances
@@ -325,7 +323,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     for(i = 0; i < niter; i++)
     {
         for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
-        for(j = 0; j < nregpars; j++) sigma2_prop[j] = sigma2[j];
+        for(j = 0; j < nregpars; j++) sigma_prop[j] = sigma[j];
         
         // propose new value for intercept
         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop[0] = rnorm(1, pars[0], 0.1)[0];
@@ -377,8 +375,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
-                        acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(sigma2[j - 1]), 1);
-                        acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sqrt(sigma2[j - 1]), 1);
+                        acc_curr += R::dnorm(pars[j], priors(j, 0), sigma[j - 1], 1);
+                        acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sigma[j - 1], 1);
                     }
                     acc = acc_prop - acc_curr;
                     //proposals cancel
@@ -413,7 +411,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         pars_prop[j] = 0.0;
-                        sigma2_prop[j - 1] = 0.0;
+                        sigma_prop[j - 1] = 0.0;
                         indpars[j - 1] = 0;
                         nattempt_del[j]++;
                     }
@@ -424,8 +422,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
-                        acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(sigma2[j - 1]), 1);
-                        if(random == 2) acc_curr += R::dunif(sqrt(sigma2[j - 1]), priors(npars, 0), priors(npars, 1), 1);
+                        acc_curr += R::dnorm(pars[j], priors(j, 0), sigma[j - 1], 1);
+                        if(random == 2) acc_curr += R::dunif(sigma[j - 1], priors(npars, 0), priors(npars, 1), 1);
                     }
                     acc = acc_prop - acc_curr;
                     
@@ -434,7 +432,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         acc += R::dnorm(pars[j], tempmn[j], sqrt(tempvar[j]), 1);
-                        if(random == 2) acc += R::dnorm(sqrt(sigma2[j - 1]), tempmn[npars + j], sqrt(tempvar[npars + j]), 1);
+                        if(random == 2) acc += R::dnorm(sigma[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
                     }
                     
                     //accept/reject proposal
@@ -445,7 +443,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                             {
                                 pars[j] = pars_prop[j];
-                                sigma2[j - 1] = sigma2_prop[j - 1];
+                                sigma[j - 1] = sigma_prop[j - 1];
                                 nacc_del[j]++;
                             }
                             LL_curr = LL_prop;
@@ -455,7 +453,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                             {
                                 pars_prop[j] = pars[j];
-                                sigma2_prop[j - 1] = sigma2[j - 1];
+                                sigma_prop[j - 1] = sigma[j - 1];
                                 indpars[j - 1] = 1;
                             }
                         }
@@ -465,7 +463,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                         {
                             pars_prop[j] = pars[j];
-                            sigma2_prop[j - 1] = sigma2[j - 1];
+                            sigma_prop[j - 1] = sigma[j - 1];
                             indpars[j - 1] = 1;
                         }
                     }
@@ -479,12 +477,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     pars_prop[j] = rnorm(1, tempmn[j], sqrt(tempvar[j]))[0];
-                    if(random == 2)
-                    {
-                        sigma2_prop[j - 1] = rnorm(1, tempmn[npars + j], sqrt(tempvar[npars + j]))[0];
-                        sigma2_prop[j - 1] = pow(sigma2_prop[j - 1], 2.0);
-                    }
-                    if(random == 1) sigma2_prop[j - 1] = sigma2full;
+                    if(random == 2) sigma_prop[j - 1] = rnorm(1, tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]))[0];
+                    if(random == 1) sigma_prop[j - 1] = sigmafull;
                     indpars[j - 1] = 1;
                     nattempt_add[j]++;
                 }
@@ -495,8 +489,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 acc_curr = LL_curr;
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
-                    acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sqrt(sigma2_prop[j - 1]), 1);
-                    if(random == 2) acc_prop += R::dunif(sqrt(sigma2_prop[j - 1]), priors(npars, 0), priors(npars, 1), 1);
+                    acc_prop += R::dnorm(pars_prop[j], priors(j, 0), sigma_prop[j - 1], 1);
+                    if(random == 2) acc_prop += R::dunif(sigma_prop[j - 1], priors(npars, 0), priors(npars, 1), 1);
                 }
                 acc = acc_prop - acc_curr;
                 
@@ -505,7 +499,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     acc -= R::dnorm(pars_prop[j], tempmn[j], sqrt(tempvar[j]), 1);
-                    if(random == 2) acc -= R::dnorm(sqrt(sigma2_prop[j - 1]), tempmn[npars + j], sqrt(tempvar[npars + j]), 1);
+                    if(random == 2) acc -= R::dnorm(sigma_prop[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
                 }
                 
                 //accept/reject proposal
@@ -516,7 +510,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                         {
                             pars[j] = pars_prop[j];
-                            sigma2[j - 1] = sigma2_prop[j - 1];
+                            sigma[j - 1] = sigma_prop[j - 1];
                             nacc_add[j]++;
                         }
                         LL_curr = LL_prop;
@@ -526,7 +520,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                         {
                             pars_prop[j] = pars[j];
-                            sigma2_prop[j - 1] = sigma2[j - 1];
+                            sigma_prop[j - 1] = sigma[j - 1];
                             indpars[j - 1] = 0;
                         }
                     }
@@ -536,7 +530,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         pars_prop[j] = pars[j];
-                        sigma2_prop[j - 1] = sigma2[j - 1];
+                        sigma_prop[j - 1] = sigma[j - 1];
                         indpars[j - 1] = 0;
                     }
                 }
@@ -548,16 +542,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             if(random == 1)
             {
                 //now propose update for SD hyperparameter
-                if(runif(1, 0.0, 1.0)[0] < scale) sigma2full_prop = rnorm(1, sqrt(sigma2full), 0.1)[0];
-                else sigma2full_prop = rnorm(1, sqrt(sigma2full), tempsigmafullsd)[0];
+                if(runif(1, 0.0, 1.0)[0] < scale) sigmafull_prop = rnorm(1, sigmafull, 0.1)[0];
+                else sigmafull_prop = rnorm(1, sigmafull, tempsigmafullsd)[0];
                 nattemptsigmafull++;
                 
-                //check validity of SD hyperparameter
-                if(sigma2full_prop > priors(npars, 0) && sigma2full_prop < priors(npars, 1))
+                if(sigmafull_prop > priors(npars, 0) && sigmafull_prop < priors(npars, 1))
                 {
-                    //convert to variance for consistency
-                    sigma2full_prop = pow(sigma2full_prop, 2.0);
-                    
                     // calculate log-prior for regression terms
                     acc_prop = 0.0;
                     acc_curr = 0.0;
@@ -565,8 +555,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         if(indpars[k] == 1)
                         {
-                            acc_prop += R::dnorm(pars[k + 1], priors(k + 1, 0), sqrt(sigma2full_prop), 1);
-                            acc_curr += R::dnorm(pars[k + 1], priors(k + 1, 0), sqrt(sigma2full), 1);
+                            acc_prop += R::dnorm(pars[k + 1], priors(k + 1, 0), sigmafull_prop, 1);
+                            acc_curr += R::dnorm(pars[k + 1], priors(k + 1, 0), sigmafull, 1);
                         }
                     }
                     //priors for SD cancel
@@ -578,16 +568,16 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         if(log(runif(1, 0.0, 1.0)[0]) < acc)
                         {
-                            sigma2full = sigma2full_prop;
+                            sigmafull = sigmafull_prop;
                             naccsigmafull++;
                         }
-                        else sigma2full_prop = sigma2full;
+                        else sigmafull_prop = sigmafull;
                     }
-                    else sigma2full_prop = sigma2full;
+                    else sigmafull_prop = sigmafull;
                 }
-                else sigma2full_prop = sigma2full;
-                //reset individual sigma2
-                for(j = 0; j < nregpars; j++) sigma2[j] = sigma2full;
+                else sigmafull_prop = sigmafull;
+                //reset individual sigma
+                for(j = 0; j < nregpars; j++) sigma[j] = sigmafull;
             }
             else
             {
@@ -596,19 +586,16 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     if(indpars[j] == 1)
                     {
                         //now propose update for SD hyperparameter
-                        if(runif(1, 0.0, 1.0)[0] < scale) sigma2_prop[j] = rnorm(1, sqrt(sigma2[j]), 0.1)[0];
-                        else sigma2_prop[j] = rnorm(1, sqrt(sigma2[j]), tempsigmasd[j])[0];
+                        if(runif(1, 0.0, 1.0)[0] < scale) sigma_prop[j] = rnorm(1, sigma[j], 0.1)[0];
+                        else sigma_prop[j] = rnorm(1, sigma[j], tempsigmasd[j])[0];
                         nattemptsigma[j]++;
                         
                         //check validity of SD hyperparameter
-                        if(sigma2_prop[j] > priors(npars, 0) && sigma2_prop[j] < priors(npars, 1))
-                        {
-                            //convert to variance for consistency
-                            sigma2_prop[j] = pow(sigma2_prop[j], 2.0);
-                            
+                        if(sigma_prop[j] > priors(npars, 0) && sigma_prop[j] < priors(npars, 1))
+                        {   
                             // calculate log-prior for regression terms
-                            acc_prop += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(sigma2_prop[j]), 1);
-                            acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(sigma2[j]), 1);
+                            acc_prop += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma_prop[j], 1);
+                            acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
                             //priors for SD cancel
                             //proposals cancel
                             
@@ -618,14 +605,14 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             {
                                 if(log(runif(1, 0.0, 1.0)[0]) < acc)
                                 {
-                                    sigma2[j] = sigma2_prop[j];
+                                    sigma[j] = sigma_prop[j];
                                     naccsigma[j]++;
                                 }
-                                else sigma2_prop[j] = sigma2[j];
+                                else sigma_prop[j] = sigma[j];
                             }
-                            else sigma2_prop[j] = sigma2[j];
+                            else sigma_prop[j] = sigma[j];
                         }
-                        else sigma2_prop[j] = sigma2[j];
+                        else sigma_prop[j] = sigma[j];
                     }
                 }
             }
@@ -638,7 +625,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sqrt(sigma2[j]), 1);
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
         }
         //add variance component
         if(random > 0)
@@ -647,10 +634,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
                 for(j = 0; j < nregpars; j++)
                 {
-                    if(indpars[j] == 1) acc_curr += R::dunif(sqrt(sigma2[j]), priors(npars, 0), priors(npars, 1), 1);
+                    if(indpars[j] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
                 }
             }
-            else acc_curr += R::dunif(sqrt(sigma2full), priors(npars, 0), priors(npars, 1), 1);
+            else acc_curr += R::dunif(sigmafull, priors(npars, 0), priors(npars, 1), 1);
         }
         if(R_finite(acc_curr) == 0) stop("Non-finite posterior produced");
         
@@ -658,13 +645,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         for(j = 0; j < npars; j++) output(i, j) = pars[j];
         if(random == 1)
         {
-            output(i, npars) = sigma2full;
+            output(i, npars) = sigmafull;
             for(j = 0; j < nregpars; j++) output(i, npars + 1 + j) = indpars[j];
             output(i, npars + nregpars + 1) = acc_curr;
         }
         if(random == 2)
         {
-            for(j = 0; j < nregpars; j++) output(i, npars + j) = sigma2[j];
+            for(j = 0; j < nregpars; j++) output(i, npars + j) = sigma[j];
             for(j = 0; j < nregpars; j++) output(i, npars + nregpars + j) = indpars[j];
             output(i, npars + 2 * nregpars) = acc_curr;
         }
