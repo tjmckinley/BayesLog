@@ -15,7 +15,7 @@ source("analysisfunctions.R")
 
 #run mcmc
 #bwt.mcmc <- run.mcmc(bwt, "low")
-bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = T, random = T)
+bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "locrand")
 
 summary.varselect(bwt.mcmc1)
 

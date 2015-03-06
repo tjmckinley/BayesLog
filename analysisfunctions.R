@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = T)
+run.mcmc <- function(dat, response, inits = NA, inits_sigma2 = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"))
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -31,19 +31,26 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
 	#extract number of parameters
 	npars <- ncol(dat) - 1
 	
+	#set random effect indicator
+	stopifnot(!is.na(match(random, c("fixed", "globrand", "locrand"))))
+	random <- ifelse(random == "fixed", 0, ifelse(random == "globrand", 1, 2))
+	
 	#generate initial values
 	if(!is.list(inits))
 	{
         gen_inits <- 1
         inits <- list(nchains)
-        for(j in 1:nchains) inits[[j]] <- rep(1, ncol(dat) + 1)
+        for(j in 1:nchains) inits[[j]] <- rep(1, ncol(dat))
+        inits_sigma2 <- list(nchains)
+        for(j in 1:nchains) inits_sigma2[[j]] <- rep(1, ncol(dat) - 1)
     }
 	else
 	{
-	    if(length(inits) != nchains) stop("List of initial values doesn't match number of chains")
+	    if(length(inits) != nchains | length(inits_sigma2) != nchains) stop("List of initial values doesn't match number of chains")
 	    else
 	    {
-	        if(!all(sapply(inits, length) == (ncol(dat) - 1))) stop("Wrong number of initial values")
+	        if(!all(sapply(inits, length) == ncol(dat))) stop("Wrong number of initial values")
+	        if(!all(sapply(inits_sigma2, length) == (ncol(dat) - 1))) stop("Wrong number of initial sigma2 values")
 	        gen_inits <- 0
 	    }
 	}
@@ -55,10 +62,10 @@ run.mcmc <- function(dat, response, inits = NA, nchains = 2, n.iter = 50000, sca
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, ifelse(random, 1, 0))
-        #add names
-        colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
-        if(random == 0) model.sim[[j]] <- model.sim[[j]][, -which(colnames(model.sim[[j]]) == "sigma2")]
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma2[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
+        if(random == 1) colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma2", paste0("I_", vars), "post")
+        if(random == 2) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma2_", vars), paste0("I_", vars), "post")
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
     
