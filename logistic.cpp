@@ -2,7 +2,7 @@
 using namespace Rcpp;
 
 //function to calculate posterior mean and variance
-void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, IntegerVector *indpars, NumericMatrix posterior)
+void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior)
 {
     int j, k, m;
 
@@ -15,7 +15,7 @@ void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, Num
             (*tempmn)[j - offset] = 0;
             for(k = 0; k <= i; k++)
             {
-                if((*indpars)[j - offset + indoffset] == 1)
+                if(posterior(k, j - offset + indoffset) == 1)
                 {
                     (*tempcounts)[j - offset]++;
                     (*tempmn)[j - offset] += posterior(k, j);
@@ -30,7 +30,7 @@ void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, Num
             (*tempvar)[j - offset] = 0;
             for(k = 0; k <= i; k++)
             {
-                if((*indpars)[j - offset + indoffset] == 1) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
+                if(posterior(k, j - offset + indoffset) == 1) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
             }
             if((*tempcounts)[j - offset] > 1)
             {
@@ -45,7 +45,7 @@ void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, Num
         //start recursively updating variance 
         for(j = offset; j < (offset + npars); j++)
         {
-            if((*indpars)[j - offset + indoffset] == 1)
+            if(posterior(i, j - offset + indoffset) == 1)
             {
                 (*tempcounts)[j - offset]++;
                 if((*tempcounts)[j - offset] > 2) (*tempvar)[j - offset] = ((*tempvar)[j - offset] * ((*tempcounts)[j - offset] - 2)) + (((*tempcounts)[j - offset] - 1) * pow((*tempmn)[j - offset], 2.0));
@@ -54,7 +54,7 @@ void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, Num
         //recursively update mean and variance
         for(j = offset; j < (offset + npars); j++)
         {
-            if((*indpars)[j - offset + indoffset] == 1)
+            if(posterior(i, j - offset + indoffset) == 1)
             {
                 if((*tempcounts)[j - offset] > 2)
                 {
@@ -746,8 +746,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 if(tempcountssigma[j] >= 2) tempvarsigma[j] = tempvarsigma[j] / adaptscale;
             }
             //update means and variances for adaptive proposal
-            calc_meanvar(i, 0, 0, ninitial, npars, &tempmn, &tempvar, &tempcounts, &indpars, output);
-            calc_meanvar(i, npars, 1, ninitial, nregpars, &tempmnsigma, &tempvarsigma, &tempcountssigma, &indpars, output);
+            calc_meanvar(i, 0, npars + nregpars, ninitial, npars, &tempmn, &tempvar, &tempcounts, output);
+            calc_meanvar(i, npars, npars + nregpars, ninitial, nregpars, &tempmnsigma, &tempvarsigma, &tempcountssigma, output);
             //rescale variances if necessary
             for(j = 0; j < npars; j++)
             {
@@ -762,8 +762,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     
 //    //print estimates of posterior means and variances as a test
 //    Rprintf("TEST MEANS AND VARS\n");
-//    for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d], %f\n", j, tempmn[j], j, tempvar[j] / adaptscale);
-//    for(j = 0; j < nregpars; j++) Rprintf("tempmnsigma[%d] = %f tempvarsigma[%d], %f\n", j, tempmnsigma[j], j, tempvarsigma[j] / adaptscale);
+//    for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f\n", j, tempmn[j], j, tempvar[j] / adaptscale);
+//    for(j = 0; j < nregpars; j++) Rprintf("tempmnsigma[%d] = %f tempvarsigma[%d] = %f\n", j, tempmnsigma[j], j, tempvarsigma[j] / adaptscale);
     
     return(output);
 }
