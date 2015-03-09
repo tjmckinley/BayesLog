@@ -18,7 +18,7 @@ double adapt_scale(int nacc, int niter, double desacc, double propscale)
 }
 
 //function to calculate posterior mean and variance
-void calc_meanvar(int i, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, IntegerVector *indpars, NumericMatrix posterior)
+void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, IntegerVector *indpars, NumericMatrix posterior)
 {
     int j, k, m;
 
@@ -26,75 +26,75 @@ void calc_meanvar(int i, int ninitial, int npars, NumericVector *tempmn, Numeric
     if((i + 1) == ninitial)
     {
         //first: means
-        for(j = 0; j < npars; j++)
+        for(j = offset; j < (offset + npars); j++)
         {
-            (*tempmn)[j] = 0;
+            (*tempmn)[j - offset] = 0;
             for(k = 0; k <= i; k++)
             {
-                if((*indpars)[j - 1] == 1)
+                if((*indpars)[j - offset + indoffset] == 1)
                 {
-                    (*tempcounts)[j]++;
-                    (*tempmn)[j] += posterior(k, j);
+                    (*tempcounts)[j - offset]++;
+                    (*tempmn)[j - offset] += posterior(k, j);
                 }
             }
-            if((*tempcounts)[j] > 1) (*tempmn)[j] = (*tempmn)[j] / ((double) (*tempcounts)[j]);
-            else (*tempmn)[j] = 0.0;
+            if((*tempcounts)[j - offset] > 1) (*tempmn)[j - offset] = (*tempmn)[j - offset] / ((double) (*tempcounts)[j - offset]);
+            else (*tempmn)[j - offset] = 0.0;
         }
         //second: variances
-        for(j = 0; j < npars; j++)
+        for(j = offset; j < (offset + npars); j++)
         {
-            (*tempvar)[j] = 0;
+            (*tempvar)[j - offset] = 0;
             for(k = 0; k <= i; k++)
             {
-                if((*indpars)[j - 1] == 1) (*tempvar)[j] += pow(posterior(k, j), 2.0);
+                if((*indpars)[j - offset + indoffset] == 1) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
             }
-            if((*tempcounts)[j] > 1)
+            if((*tempcounts)[j - offset] > 1)
             {
-                (*tempvar)[j] = (*tempvar)[j] - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
-                (*tempvar)[j] = (*tempvar)[j] / ((double) ((*tempcounts)[j] - 1));
+                (*tempvar)[j - offset] = (*tempvar)[j - offset] - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
+                (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) ((*tempcounts)[j - offset] - 1));
             }
-            else (*tempvar)[j] = 1.0;
+            else (*tempvar)[j - offset] = 1.0;
         }
     }
     else
     {
         //start recursively updating variance 
-        for(j = 0; j < npars; j++)
+        for(j = offset; j < (offset + npars); j++)
         {
-            if((*indpars)[j - 1] == 1)
+            if((*indpars)[j - offset + indoffset] == 1)
             {
-                (*tempcounts)[j]++;
-                if((*tempcounts)[j] > 2) (*tempvar)[j] = ((*tempvar)[j] * ((*tempcounts)[j] - 2)) + (((*tempcounts)[j] - 1) * pow((*tempmn)[j], 2.0));
+                (*tempcounts)[j - offset]++;
+                if((*tempcounts)[j - offset] > 2) (*tempvar)[j - offset] = ((*tempvar)[j - offset] * ((*tempcounts)[j - offset] - 2)) + (((*tempcounts)[j - offset] - 1) * pow((*tempmn)[j - offset], 2.0));
             }
         }
         //recursively update mean and variance
-        for(j = 0; j < npars; j++)
+        for(j = offset; j < (offset + npars); j++)
         {
-            if((*indpars)[j - 1] == 1)
+            if((*indpars)[j - offset + indoffset] == 1)
             {
-                if((*tempcounts)[j] > 2)
+                if((*tempcounts)[j - offset] > 2)
                 {
-                    (*tempmn)[j] = ((*tempmn)[j] * ((*tempcounts)[j] - 1) + posterior(i, j)) / ((double) (*tempcounts)[j]);
-                    (*tempvar)[j] += pow(posterior(i, j), 2.0) - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
-                    (*tempvar)[j] = (*tempvar)[j] / ((double) (*tempcounts)[j] - 1);
+                    (*tempmn)[j - offset] = ((*tempmn)[j - offset] * ((*tempcounts)[j - offset] - 1) + posterior(i, j)) / ((double) (*tempcounts)[j - offset]);
+                    (*tempvar)[j - offset] += pow(posterior(i, j), 2.0) - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
+                    (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) (*tempcounts)[j - offset] - 1);
                 }
                 else
                 {
-                    if((*tempcounts)[j] == 2)
+                    if((*tempcounts)[j - offset] == 2)
                     {
                         //following should be fine since initialised at zero
-                        (*tempmn)[j] = 0;
-                        for(k = 0; k <= i; k++) (*tempmn)[j] += posterior(k, j);
-                        (*tempmn)[j] = (*tempmn)[j] / ((double) (*tempcounts)[j]);
-                        (*tempvar)[j] = 0;
-                        for(k = 0; k <= i; k++) (*tempvar)[j] += pow(posterior(k, j), 2.0);
-                        (*tempvar)[j] = (*tempvar)[j] - (*tempcounts)[j] * pow((*tempmn)[j], 2.0);
-                        (*tempvar)[j] = (*tempvar)[j] / ((double) ((*tempcounts)[j] - 1));
+                        (*tempmn)[j - offset] = 0;
+                        for(k = 0; k <= i; k++) (*tempmn)[j - offset] += posterior(k, j);
+                        (*tempmn)[j - offset] = (*tempmn)[j - offset] / ((double) (*tempcounts)[j - offset]);
+                        (*tempvar)[j - offset] = 0;
+                        for(k = 0; k <= i; k++) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
+                        (*tempvar)[j - offset] = (*tempvar)[j - offset] - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
+                        (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) ((*tempcounts)[j - offset] - 1));
                     }
                     else
                     {
-                        (*tempmn)[j] = 0.0;
-                        (*tempvar)[j] = 1.0;
+                        (*tempmn)[j - offset] = 0.0;
+                        (*tempvar)[j - offset] = 1.0;
                     }
                 }
             }
@@ -120,7 +120,7 @@ double loglike (NumericVector pars, IntegerVector indpars, NumericMatrix data)
         for(j = 1; j < data.ncol(); j++)
         {
             //add contribution for each covariate
-            nu += pars[j] * indpars[j - 1] * data(i, j);
+            nu += pars[j] * indpars[j] * data(i, j);
         }
         //convert to correct scale
         nu = exp(nu) / (1.0 + exp(nu));
@@ -159,7 +159,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // calculate number of parameters
     int npars = ini_pars.size();
     int nregpars = npars - 1;
-    IntegerVector indpars(nregpars);
+    IntegerVector indpars(npars);
     
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
@@ -226,11 +226,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             
         if(varselect == 1)
         {
-            for(i = 0; i < nregpars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+            for(i = 0; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
         }
         else
         {
-            for(i = 0; i < nregpars; i++) indpars[i] = 1;
+            for(i = 0; i < npars; i++) indpars[i] = 1;
         }
         
         for(i = 0; i < nregpars; i++) if(sigma[i] < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
@@ -244,7 +244,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
+            if(indpars[j + 1] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
         }
         //add variance component
         if(random > 0)
@@ -253,7 +253,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
                 for(j = 0; j < nregpars; j++)
                 {
-                    if(indpars[j] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
+                    if(indpars[j + 1] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
                 }
             }
             else acc_curr += R::dunif(sqrt(sigmafull), priors(npars, 0), priors(npars, 1), 1);
@@ -270,7 +270,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("\nInitial values:\n");
     for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
     Rprintf("\nInitial indicators:\n");
-    for(j = 0; j < nregpars; j++) Rprintf("indpars[%d] = %d\n", j, indpars[j]);
+    for(j = 0; j < nregpars; j++) Rprintf("indpars[%d] = %d\n", j + 1, indpars[j + 1]);
     if(random > 0)
     {
         if(random == 2)
@@ -288,9 +288,12 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     if(random == 0) nadaptpars = npars;
     if(random == 1) nadaptpars = npars + 1;
     if(random == 2) nadaptpars = npars + nregpars;
-    NumericVector tempmn(nadaptpars);
-    NumericVector tempvar(nadaptpars, 1.0);
-    IntegerVector tempcounts(nadaptpars);
+    NumericVector tempmn(npars);
+    NumericVector tempvar(npars, 1.0);
+    IntegerVector tempcounts(npars);
+    NumericVector tempmnsigma(nregpars);
+    NumericVector tempvarsigma(nregpars, 1.0);
+    IntegerVector tempcountssigma(nregpars);
     
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0);
@@ -356,7 +359,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //now propose moves for remaining regression terms
         for(k = 0; k < orignpars; k++)
         {
-            if(indpars[cumfactindex[k] - 1] == 1)
+            if(indpars[cumfactindex[k]] == 1)
             {
                 //if variable is included, then propose to remove or move
                 if(runif(1, 0.0, 1.0)[0] < psamp)
@@ -412,7 +415,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         pars_prop[j] = 0.0;
                         sigma_prop[j - 1] = 0.0;
-                        indpars[j - 1] = 0;
+                        indpars[j] = 0;
                         nattempt_del[j]++;
                     }
                     
@@ -432,7 +435,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         acc += R::dnorm(pars[j], tempmn[j], sqrt(tempvar[j]), 1);
-                        if(random == 2) acc += R::dnorm(sigma[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
+                        if(random == 2) acc += R::dnorm(sigma[j - 1], tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]), 1);
                     }
                     
                     //accept/reject proposal
@@ -454,7 +457,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             {
                                 pars_prop[j] = pars[j];
                                 sigma_prop[j - 1] = sigma[j - 1];
-                                indpars[j - 1] = 1;
+                                indpars[j] = 1;
                             }
                         }
                     }
@@ -464,7 +467,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         {
                             pars_prop[j] = pars[j];
                             sigma_prop[j - 1] = sigma[j - 1];
-                            indpars[j - 1] = 1;
+                            indpars[j] = 1;
                         }
                     }
                 }
@@ -477,9 +480,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     pars_prop[j] = rnorm(1, tempmn[j], sqrt(tempvar[j]))[0];
-                    if(random == 2) sigma_prop[j - 1] = rnorm(1, tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]))[0];
+                    if(random == 2) sigma_prop[j - 1] = rnorm(1, tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]))[0];
                     if(random == 1) sigma_prop[j - 1] = sigmafull;
-                    indpars[j - 1] = 1;
+                    indpars[j] = 1;
                     nattempt_add[j]++;
                 }
                 
@@ -499,7 +502,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     acc -= R::dnorm(pars_prop[j], tempmn[j], sqrt(tempvar[j]), 1);
-                    if(random == 2) acc -= R::dnorm(sigma_prop[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
+                    if(random == 2) acc -= R::dnorm(sigma_prop[j - 1], tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]), 1);
                 }
                 
                 //accept/reject proposal
@@ -521,7 +524,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         {
                             pars_prop[j] = pars[j];
                             sigma_prop[j - 1] = sigma[j - 1];
-                            indpars[j - 1] = 0;
+                            indpars[j] = 0;
                         }
                     }
                 }
@@ -531,7 +534,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         pars_prop[j] = pars[j];
                         sigma_prop[j - 1] = sigma[j - 1];
-                        indpars[j - 1] = 0;
+                        indpars[j] = 0;
                     }
                 }
             }
@@ -553,7 +556,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     acc_curr = 0.0;
                     for(k = 0; k < nregpars; k++)
                     {
-                        if(indpars[k] == 1)
+                        if(indpars[k + 1] == 1)
                         {
                             acc_prop += R::dnorm(pars[k + 1], priors(k + 1, 0), sigmafull_prop, 1);
                             acc_curr += R::dnorm(pars[k + 1], priors(k + 1, 0), sigmafull, 1);
@@ -583,7 +586,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
                 for(j = 0; j < nregpars; j++)
                 {
-                    if(indpars[j] == 1)
+                    if(indpars[j + 1] == 1)
                     {
                         //now propose update for SD hyperparameter
                         if(runif(1, 0.0, 1.0)[0] < scale) sigma_prop[j] = rnorm(1, sigma[j], 0.1)[0];
@@ -625,7 +628,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add priors for regression parameters
         for(j = 0; j < nregpars; j++)
         {
-            if(indpars[j] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
+            if(indpars[j + 1] == 1) acc_curr += R::dnorm(pars[j + 1], priors(j + 1, 0), sigma[j], 1);
         }
         //add variance component
         if(random > 0)
@@ -634,7 +637,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
                 for(j = 0; j < nregpars; j++)
                 {
-                    if(indpars[j] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
+                    if(indpars[j + 1] == 1) acc_curr += R::dunif(sigma[j], priors(npars, 0), priors(npars, 1), 1);
                 }
             }
             else acc_curr += R::dunif(sigmafull, priors(npars, 0), priors(npars, 1), 1);
@@ -646,13 +649,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         if(random == 1)
         {
             output(i, npars) = sigmafull;
-            for(j = 0; j < nregpars; j++) output(i, npars + 1 + j) = indpars[j];
+            for(j = 0; j < nregpars; j++) output(i, npars + 1 + j) = indpars[j + 1];
             output(i, npars + nregpars + 1) = acc_curr;
         }
         if(random == 2)
         {
             for(j = 0; j < nregpars; j++) output(i, npars + j) = sigma[j];
-            for(j = 0; j < nregpars; j++) output(i, npars + nregpars + j) = indpars[j];
+            for(j = 0; j < nregpars; j++) output(i, npars + nregpars + j) = indpars[j + 1];
             output(i, npars + 2 * nregpars) = acc_curr;
         }
         
@@ -758,7 +761,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         }
         
         // record posterior mean and variances for use in addition/removal steps
-        if ((i + 1) >= ninitial) calc_meanvar(i, ninitial, nadaptpars, &tempmn, &tempvar, &tempcounts, &indpars, output);
+        if ((i + 1) >= ninitial)
+        {
+            calc_meanvar(i, 0, 0, ninitial, npars, &tempmn, &tempvar, &tempcounts, &indpars, output);
+            calc_meanvar(i, npars, 1, ninitial, nregpars, &tempmnsigma, &tempvarsigma, &tempcountssigma, &indpars, output);
+        }
     }
     
     return(output);
