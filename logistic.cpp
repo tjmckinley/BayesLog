@@ -2,85 +2,76 @@
 using namespace Rcpp;
 
 //function to calculate posterior mean and variance
-void calc_meanvar(int i, int offset, int indoffset, int ninitial, int npars, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior)
+void calc_meanvar(int i, int ninitial, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior, int postelement, int parelement, int indelement)
 {
     int j, k, m;
 
     //update means and variances for adaptive proposal
     if((i + 1) == ninitial)
     {
-        //first: means
-        for(j = offset; j < (offset + npars); j++)
+        //calculate mean
+        for(k = 0; k <= i; k++)
         {
-            (*tempmn)[j - offset] = 0;
-            for(k = 0; k <= i; k++)
+            if(posterior(k, indelement) == 1)
             {
-                if(posterior(k, j - offset + indoffset) == 1)
-                {
-                    (*tempcounts)[j - offset]++;
-                    (*tempmn)[j - offset] += posterior(k, j);
-                }
+                (*tempcounts)[parelement]++;
+                (*tempmn)[parelement] += posterior(k, postelement);
             }
-            if((*tempcounts)[j - offset] > 1) (*tempmn)[j - offset] = (*tempmn)[j - offset] / ((double) (*tempcounts)[j - offset]);
-            else (*tempmn)[j - offset] = 0.0;
         }
-        //second: variances
-        for(j = offset; j < (offset + npars); j++)
+        if((*tempcounts)[parelement] > 1) (*tempmn)[parelement] = (*tempmn)[parelement] / ((double) (*tempcounts)[parelement]);
+        else (*tempmn)[parelement] = 0.0;
+        
+        //calculate variance
+        (*tempvar)[parelement] = 0.0;
+        for(k = 0; k <= i; k++) if(posterior(k, indelement) == 1) (*tempvar)[parelement] += pow(posterior(k, postelement), 2.0);
+        if((*tempcounts)[parelement] > 1)
         {
-            (*tempvar)[j - offset] = 0;
-            for(k = 0; k <= i; k++)
-            {
-                if(posterior(k, j - offset + indoffset) == 1) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
-            }
-            if((*tempcounts)[j - offset] > 1)
-            {
-                (*tempvar)[j - offset] = (*tempvar)[j - offset] - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
-                (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) ((*tempcounts)[j - offset] - 1));
-            }
-            else (*tempvar)[j - offset] = pow(0.1, 2.0);
+            (*tempvar)[parelement] -= (*tempcounts)[parelement] * pow((*tempmn)[parelement], 2.0);
+            (*tempvar)[parelement] = (*tempvar)[parelement] / ((double) ((*tempcounts)[parelement] - 1.0));
         }
+        else (*tempvar)[parelement] = pow(0.1, 2.0);
     }
     else
     {
-        //start recursively updating variance 
-        for(j = offset; j < (offset + npars); j++)
+        //start recursively updating variance
+        if(posterior(i, indelement) == 1)
         {
-            if(posterior(i, j - offset + indoffset) == 1)
-            {
-                (*tempcounts)[j - offset]++;
-                if((*tempcounts)[j - offset] > 2) (*tempvar)[j - offset] = ((*tempvar)[j - offset] * ((*tempcounts)[j - offset] - 2)) + (((*tempcounts)[j - offset] - 1) * pow((*tempmn)[j - offset], 2.0));
-            }
+            (*tempcounts)[parelement]++;
+            if((*tempcounts)[parelement] > 2) (*tempvar)[parelement] = ((*tempvar)[parelement] * ((*tempcounts)[parelement] - 2.0)) + (((*tempcounts)[parelement] - 1.0) * pow((*tempmn)[parelement], 2.0));
         }
-        //recursively update mean and variance
-        for(j = offset; j < (offset + npars); j++)
+        //now update mean
+        if((*tempcounts)[parelement] > 2) (*tempmn)[parelement] = (((*tempcounts)[parelement] - 1.0) * (*tempmn)[parelement] + posterior(i, postelement)) / ((double) (*tempcounts)[parelement]);
+        else
         {
-            if(posterior(i, j - offset + indoffset) == 1)
+            if((*tempcounts)[parelement] == 2)
             {
-                if((*tempcounts)[j - offset] > 2)
+                //calculate mean
+                for(k = 0; k <= i; k++)
                 {
-                    (*tempmn)[j - offset] = ((*tempmn)[j - offset] * ((*tempcounts)[j - offset] - 1) + posterior(i, j)) / ((double) (*tempcounts)[j - offset]);
-                    (*tempvar)[j - offset] += pow(posterior(i, j), 2.0) - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
-                    (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) (*tempcounts)[j - offset] - 1);
+                    if(posterior(k, indelement) == 1) (*tempmn)[parelement] += posterior(k, postelement);
                 }
-                else
+                (*tempmn)[parelement] = (*tempmn)[parelement] / ((double) (*tempcounts)[parelement]);
+            }
+            else (*tempmn)[parelement] = 0.0;
+        }
+        //now update variance
+        if(posterior(i, indelement) == 1)
+        {
+            if((*tempcounts)[parelement] > 2)
+            {
+                (*tempvar)[parelement] += pow(posterior(i, postelement), 2.0) - (*tempcounts)[parelement] * pow((*tempmn)[parelement], 2.0);
+                (*tempvar)[parelement] = (*tempvar)[parelement] / ((double) (*tempcounts)[parelement] - 1);
+            }
+            else
+            {
+                if((*tempcounts)[parelement] == 2)
                 {
-                    if((*tempcounts)[j - offset] == 2)
-                    {
-                        //following should be fine since initialised at zero
-                        (*tempmn)[j - offset] = 0;
-                        for(k = 0; k <= i; k++) (*tempmn)[j - offset] += posterior(k, j);
-                        (*tempmn)[j - offset] = (*tempmn)[j - offset] / ((double) (*tempcounts)[j - offset]);
-                        (*tempvar)[j - offset] = 0;
-                        for(k = 0; k <= i; k++) (*tempvar)[j - offset] += pow(posterior(k, j), 2.0);
-                        (*tempvar)[j - offset] = (*tempvar)[j - offset] - (*tempcounts)[j - offset] * pow((*tempmn)[j - offset], 2.0);
-                        (*tempvar)[j - offset] = (*tempvar)[j - offset] / ((double) ((*tempcounts)[j - offset] - 1));
-                    }
-                    else
-                    {
-                        (*tempmn)[j - offset] = 0.0;
-                        (*tempvar)[j - offset] = pow(0.1, 2.0);
-                    }
+                    (*tempvar)[parelement] = 0.0;
+                    for(k = 0; k <= i; k++) if(posterior(k, indelement) == 1) (*tempvar)[parelement] += pow(posterior(k, postelement), 2.0);
+                    (*tempvar)[parelement] = (*tempvar)[parelement] - (*tempcounts)[parelement] * pow((*tempmn)[parelement], 2.0);
+                    (*tempvar)[parelement] = (*tempvar)[parelement] / ((double) ((*tempcounts)[parelement] - 1));
                 }
+                else (*tempvar)[parelement] = pow(0.1, 2.0);
             }
         }
     }
@@ -740,14 +731,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(j = 0; j < npars; j++)
             {
                 if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale;
+                calc_meanvar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, j + npars + nregpars);
             }
             for(j = 0; j < nregpars; j++)
             {
                 if(tempcountssigma[j] >= 2) tempvarsigma[j] = tempvarsigma[j] / adaptscale;
+                calc_meanvar(i, ninitial, &tempmnsigma, &tempvarsigma, &tempcountssigma, output, j + npars, j, j + npars + nregpars);
             }
-            //update means and variances for adaptive proposal
-            calc_meanvar(i, 0, npars + nregpars, ninitial, npars, &tempmn, &tempvar, &tempcounts, output);
-            calc_meanvar(i, npars, npars + nregpars, ninitial, nregpars, &tempmnsigma, &tempvarsigma, &tempcountssigma, output);
             //rescale variances if necessary
             for(j = 0; j < npars; j++)
             {
