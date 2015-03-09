@@ -263,12 +263,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     if(random == 0) nadaptpars = npars;
     if(random == 1) nadaptpars = npars + 1;
     if(random == 2) nadaptpars = npars + nregpars;
-    NumericVector tempmn(npars);
-    NumericVector tempvar(npars, pow(0.1, 2.0));
-    IntegerVector tempcounts(npars);
-    NumericVector tempmnsigma(nregpars);
-    NumericVector tempvarsigma(nregpars, pow(0.1, 2.0));
-    IntegerVector tempcountssigma(nregpars);
+    NumericVector tempmn(nadaptpars);
+    NumericVector tempvar(nadaptpars, pow(0.1, 2.0));
+    IntegerVector tempcounts(nadaptpars);
     
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0);
@@ -408,7 +405,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
                         acc += R::dnorm(pars[j], tempmn[j], sqrt(tempvar[j]), 1);
-                        if(random == 2) acc += R::dnorm(sigma[j - 1], tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]), 1);
+                        if(random == 2) acc += R::dnorm(sigma[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
                     }
                     
                     //accept/reject proposal
@@ -453,7 +450,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     pars_prop[j] = rnorm(1, tempmn[j], sqrt(tempvar[j]))[0];
-                    if(random == 2) sigma_prop[j - 1] = rnorm(1, tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]))[0];
+                    if(random == 2) sigma_prop[j - 1] = rnorm(1, tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]))[0];
                     if(random == 1) sigma_prop[j - 1] = sigmafull;
                     indpars[j] = 1;
                     nattempt_add[j]++;
@@ -475,7 +472,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
                     acc -= R::dnorm(pars_prop[j], tempmn[j], sqrt(tempvar[j]), 1);
-                    if(random == 2) acc -= R::dnorm(sigma_prop[j - 1], tempmnsigma[j - 1], sqrt(tempvarsigma[j - 1]), 1);
+                    if(random == 2) acc -= R::dnorm(sigma_prop[j - 1], tempmn[npars + j - 1], sqrt(tempvar[npars + j - 1]), 1);
                 }
                 
                 //accept/reject proposal
@@ -563,7 +560,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         //now propose update for SD hyperparameter
                         if(runif(1, 0.0, 1.0)[0] < scale) sigma_prop[j] = rnorm(1, sigma[j], 0.1)[0];
-                        else sigma_prop[j] = rnorm(1, sigma[j], sqrt(tempvarsigma[j]))[0];
+                        else sigma_prop[j] = rnorm(1, sigma[j], sqrt(tempvar[npars + j]))[0];
                         nattemptsigma[j]++;
                         
                         //check validity of SD hyperparameter
@@ -735,25 +732,20 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             }
             for(j = 0; j < nregpars; j++)
             {
-                if(tempcountssigma[j] >= 2) tempvarsigma[j] = tempvarsigma[j] / adaptscale;
-                calc_meanvar(i, ninitial, &tempmnsigma, &tempvarsigma, &tempcountssigma, output, j + npars, j, j + npars + nregpars);
+                if(tempcounts[npars + j] >= 2) tempvar[npars + j] = tempvar[npars + j] / adaptscale;
+                calc_meanvar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j + npars, j + npars, j + npars + nregpars);
             }
             //rescale variances if necessary
-            for(j = 0; j < npars; j++)
+            for(j = 0; j < nadaptpars; j++)
             {
                 if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale;
-            }
-            for(j = 0; j < nregpars; j++)
-            {
-                if(tempcountssigma[j] >= 2) tempvarsigma[j] = tempvarsigma[j] * adaptscale;
             }
         }
     }
     
 //    //print estimates of posterior means and variances as a test
 //    Rprintf("TEST MEANS AND VARS\n");
-//    for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f\n", j, tempmn[j], j, tempvar[j] / adaptscale);
-//    for(j = 0; j < nregpars; j++) Rprintf("tempmnsigma[%d] = %f tempvarsigma[%d] = %f\n", j, tempmnsigma[j], j, tempvarsigma[j] / adaptscale);
+//    for(j = 0; j < nadaptpars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f\n", j, tempmn[j], j, tempvar[j] / adaptscale);
     
     return(output);
 }
