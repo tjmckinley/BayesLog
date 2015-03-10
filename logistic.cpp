@@ -402,12 +402,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     else Rprintf("\nFixed SD component: %f\n", priors(0, 1));
     Rprintf("\n");
     
-    //set up vectors for recording posterior mean and variances
-    int nadaptpars;
-    if(random == 0) nadaptpars = npars;
-    if(random == 1) nadaptpars = npars + 1;
-    if(random == 2) nadaptpars = npars + nregpars;
-    
     //use cube class to create 3D matrix for adaptive proposal
     NumericVector tempvar0(1);
     tempvar0[0] = pow(0.1, 2.0);
@@ -426,29 +420,29 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     tempmeanmat.zeros();
     IntegerVector postelement(2);
     
-    //print to screen as check
-    for(i = 0; i < npars; i++)
-    {
-        Rprintf("Covariance %d\n", i);
-        for(j = 0; j < 2; j++)
-        {
-            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov(j, k, i));
-            Rprintf("\n");
-        }
-        Rprintf("\n");
-    }
-    
-    //print to screen as check
-    for(i = 0; i < npars; i++)
-    {
-        Rprintf("Covariance (slice) %d\n", i);
-        for(j = 0; j < 2; j++)
-        {
-            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k));
-            Rprintf("\n");
-        }
-        Rprintf("\n");
-    }
+//    //print to screen as check
+//    for(i = 0; i < npars; i++)
+//    {
+//        Rprintf("Covariance %d\n", i);
+//        for(j = 0; j < 2; j++)
+//        {
+//            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcovini(j, k, i));
+//            Rprintf("\n");
+//        }
+//        Rprintf("\n");
+//    }
+//    
+//    //print to screen as check
+//    for(i = 0; i < npars; i++)
+//    {
+//        Rprintf("Covariance (slice) %d\n", i);
+//        for(j = 0; j < 2; j++)
+//        {
+//            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k));
+//            Rprintf("\n");
+//        }
+//        Rprintf("\n");
+//    }
     
     // set up adaptive proposal distribution
     double adaptscale = pow(2.38, 2.0) / 2.0;
@@ -505,8 +499,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         }
         else pars_prop(0, 0) = pars(0, 0);
         
-//        Rprintf("i = %d\n", i);
-        
         //now propose moves for remaining regression terms
         for(k = 0; k < orignpars; k++)
         {
@@ -521,9 +513,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop.col(j) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars.col(j), tempcovini.slice(j)));
                         else pars_prop.col(j) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars.col(j), tempcov.slice(j)));
                         nattempt[j]++;
-//                        Rprintf("pars_prop %d:\n", j);
-//                        for(m = 0; m < 2; m++) Rprintf("%f\t", pars_prop.col(j)[m]);
-//                        Rprintf("\n");
                     }
                     // calculate log-likelihood – log-prior
                     LL_prop = loglike(pars_prop, indpars, data);
@@ -834,14 +823,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(j = 1; j < npars; j++)
             {
                 if(tempcounts[j] >= 2) tempcov.slice(j) = tempcov.slice(j) / adaptscale;
-//                Rprintf("Hmmm\n");
                 //set postelement
                 postelement[0] = j;
-                postelement[1] = j + npars;
-                calc_meancov(i, ninitial, j, &tempmn, &tempcov, &tempcounts, &tempmeanmat, output, postelement, j + npars + nregpars, 2);
-//                Rprintf("Hmmm1\n");
+                postelement[1] = j - 1 + npars;
+                calc_meancov(i, ninitial, j, &tempmn, &tempcov, &tempcounts, &tempmeanmat, output, postelement, j - 1 + npars + nregpars, 2);
                 if(tempcounts[j] >= 2) tempcov.slice(j) = tempcov.slice(j) * adaptscale;
-//                Rprintf("Hmmm2\n");
             }
         }
     }
