@@ -57,7 +57,11 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
             model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter.training, scale, orignpars, 0, ninitial, random)
             if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
             if(random == 1) colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
-            if(random == 2) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", vars), paste0("I_", vars), "post")
+            if(random == 2)
+            {
+                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
+                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", vars), paste0("I_", vars), "post")
+            }
             model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
             
             #extract initial values
@@ -82,7 +86,14 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	    else
 	    {
 	        if(!all(sapply(inits, length) == ncol(dat))) stop("Wrong number of initial values")
-	        if(!all(sapply(inits_sigma, length) == (ncol(dat) - 1))) stop("Wrong number of initial sigma values")
+	        if(random == 2)
+	        {
+	            if(!all(sapply(inits_sigma, length) == (ncol(dat) - 1))) stop("Wrong number of initial sigma values")
+	        }
+	        if(random == 1)
+	        {
+	            if(!all(sapply(inits_sigma, length) == 1)) stop("Wrong number of initial sigma values")
+	        }
 	        gen_inits <- 0
 	    }
 	}
@@ -94,13 +105,18 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
         model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
         if(random == 1) colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
-        if(random == 2) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", vars), paste0("I_", vars), "post")
+        if(random == 2)
+        {
+            model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
+            colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", vars), paste0("I_", vars), "post")
+        }
         if(!varselect) model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
     
 	#return output
-	model.sim <- as.mcmc.list(model.sim)
+	if(nchains > 1) model.sim <- as.mcmc.list(model.sim)
+	else model.sim <- model.sim[[1]]
 	model.sim <- list(model.sim = model.sim, varselect = varselect)
 	model.sim
 }
