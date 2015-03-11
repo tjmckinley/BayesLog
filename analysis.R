@@ -15,19 +15,21 @@ source("analysisfunctions.R")
 
 #run mcmc
 #bwt.mcmc <- run.mcmc(bwt, "low")
-bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "locrand", n.iter = 10000, nchains = 1)
+#bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "locrand", n.iter = 10000, nchains = 1)
+#bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "globrand", n.iter = 10000, nchains = 1)
+bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "fixed", n.iter = 100000)
 
-test <- as.matrix(bwt.mcmc1[[1]])
-test <- test[, c(2, 12)]
-cov(test) * ((2.38 ^ 2) / 2)
+#test <- as.matrix(bwt.mcmc1[[1]])
+#test <- test[, c(2, 12)]
+#cov(test) 
 
-test <- as.matrix(bwt.mcmc1[[1]])
-test <- test[, c(10, 20)]
-cov(test) * ((2.38 ^ 2) / 2)
+#test <- as.matrix(bwt.mcmc1[[1]])
+#test <- test[, c(10, 20)]
+#cov(test) 
 
-test <- as.matrix(bwt.mcmc1[[1]])
-test <- test[, c(11, 21)]
-cov(test) * ((2.38 ^ 2) / 2)
+#test <- as.matrix(bwt.mcmc1[[1]])
+#test <- test[, c(11, 21)]
+#cov(test) 
 
 summary.varselect(bwt.mcmc1)
 

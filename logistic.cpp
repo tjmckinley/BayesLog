@@ -19,7 +19,7 @@ double mvdnormArma(arma::vec x, arma::vec mu, arma::mat sigma)
     int ncols = sigma.n_cols;
     arma::vec x1 = (x - mu);
     arma::mat sigmainv = arma::inv(sigma);
-    arma::vec xmu = x1.t() * sigmainv;
+    arma::rowvec xmu = x1.t() * sigmainv;
     double ans = dot(xmu, x1);
     double detsig = arma::det(sigma);
     detsig = (detsig < 0 ? -detsig:detsig);
@@ -387,15 +387,18 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     
     //print initial values to screen
     Rprintf("\nInitial values:\n");
-    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
-    Rprintf("\nInitial indicators:\n");
-    for(j = 0; j < nregpars; j++) Rprintf("indpars[%d] = %d\n", j + 1, indpars[j + 1]);
-    if(random == 0) Rprintf("\nFixed SD component: %f\n", priors(0, 1));
+    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars(0, j));
+    if(varselect > 0)
+    {
+        Rprintf("\nInitial indicators:\n");
+        for(j = 0; j < nregpars; j++) Rprintf("indpars[%d] = %d\n", j + 1, indpars[j + 1]);
+    }
+    if(random == 0) Rprintf("\nFixed SD component: %f\n", sqrt(priors(0, 1)));
     if(random == 1) Rprintf("\nInitial SD component: %f\n", sigmafull);
     if(random == 2)
     {
         Rprintf("\nInitial SD components:\n");
-        for(j = 0; j < nregpars; j++) Rprintf("sigma[%d] = %f\n", j, pars(1, j + 1));
+        for(j = 0; j < nregpars; j++) Rprintf("sigma[%d] = %f\n", j + 1, pars(1, j + 1));
     }
     Rprintf("\n");
     
@@ -503,6 +506,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 //if variable is included, then propose to remove or move
                 if(runif(1, 0.0, 1.0)[0] < psamp)
                 {
+//                    Rprintf("move\n");
                     //MOVEMENT
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
@@ -569,6 +573,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 }
                 else
                 {
+//                    Rprintf("rem\n");
                     //REMOVAL
                 
                     //SET new parameter values
@@ -647,6 +652,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             }
             else
             {
+//                Rprintf("add\n");
                 //ADDITION
                 
                 //simulate new parameter values
@@ -669,7 +675,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 acc_curr = LL_curr;
                 for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                 {
-                    acc_prop = R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
+                    acc_prop += R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
                     if(random == 2) acc_prop += R::dunif(pars_prop(1, j), priors(npars, 0), priors(npars, 1), 1);
                 }
                 acc = acc_prop - acc_curr;
@@ -791,7 +797,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         
         // save current value of chain into output matrix
         for(j = 0; j < npars; j++) output(i, j) = pars(0, j);
-        if(random == 0) output(i, npars) = acc_curr;
+        if(random == 0)
+        {
+            for(j = 0; j < npars; j++) output(i, npars + j) = indpars[j];
+            output(i, 2 * npars) = acc_curr;
+        }
         if(random == 1)
         {
             output(i, npars) = sigmafull;
@@ -891,10 +901,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + 1 + j);
                     if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] * adaptscale_sing;
                 }
-                tempvarG[npars] = tempvarG[npars] / adaptscale_sing;
+                if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] / adaptscale_sing;
                 //next line links to intercept for inclusion criteria in order to update sigma (fudge)
                 calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, npars, npars, npars + 1);
-                tempvarG[npars] = tempvarG[npars] * adaptscale_sing;
+                if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] * adaptscale_sing;
             }
             if(random == 2)
             {

@@ -55,7 +55,11 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	    for(j in 1:nchains)
 	    {
             model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter.training, scale, orignpars, 0, ninitial, random)
-            if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
+            if(random == 0)
+            {
+                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
+                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
+            }
             if(random == 1)
             {
                 model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
@@ -107,7 +111,11 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	for(j in 1:nchains)
 	{
         model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
-        if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
+        if(random == 0)
+        {
+            model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
+            colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
+        }
         if(random == 1)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
@@ -123,8 +131,7 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
     }
     
 	#return output
-	if(nchains > 1) model.sim <- as.mcmc.list(model.sim)
-	else model.sim <- model.sim[[1]]
+	model.sim <- as.mcmc.list(model.sim)
 	model.sim <- list(model.sim = model.sim, varselect = varselect)
 	model.sim
 }
@@ -195,14 +202,7 @@ summary.varselect <- function(output, topmodels = 5, ...)
     output <- window(output, ...)
     
     #now extract indicators
-    if(varselect == 0)
-    {
-        output <- lapply(output, as.matrix)
-        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x))])
-        output <- lapply(output, as.mcmc)
-        output <- as.mcmc.list(output)
-        print(summary(output))
-    }
+    if(varselect == 0) print(summary(output))
     else
     {
         output <- lapply(output, as.matrix)
@@ -259,7 +259,7 @@ summary.varselect <- function(output, topmodels = 5, ...)
         indicators1 <- rbind(indicators1, indicators2)
         colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
         var <- colnames(output[[1]])[-1]
-        if(length(which(var == "sigma2")) > 0) var <- var[-which(var == "sigma2")]
+        if(length(grep(glob2rx("sigma*"), var)) > 0) var <- var[-grep(glob2rx("sigma*"), var)]
         var <- var[-c(length(var))]
         rownames(indicators1) <- c(var, "Mean", "SD")
         indicators1[indicators1 == "0"] <- ""
