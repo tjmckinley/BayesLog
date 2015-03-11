@@ -56,7 +56,11 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	    {
             model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter.training, scale, orignpars, 0, ninitial, random)
             if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
-            if(random == 1) colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
+            if(random == 1)
+            {
+                model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
+                colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
+            }
             if(random == 2)
             {
                 model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
@@ -104,7 +108,11 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	{
         model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0) colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
-        if(random == 1) colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
+        if(random == 1)
+        {
+            model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
+            colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
+        }
         if(random == 2)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]

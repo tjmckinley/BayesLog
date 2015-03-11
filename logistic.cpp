@@ -287,7 +287,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Number of initial iterations before change in add/rem proposals: %d\n", ninitial);
     
     if(random == 0) Rprintf("\nFIXED SD components used\n");
-    if(random == 1) Rprintf("\nGLOBAL RANDOM SD components used\n");
+    if(random == 1) Rprintf("\nGLOBAL RANDOM SD component used\n");
     if(random == 2) Rprintf("\nLOCAL RANDOM SD components used\n");
     
     // set up output vector of length 'niter' to record chain
@@ -917,31 +917,42 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     
     //print estimates of posterior means and variances as a test
     Rprintf("TEST MEANS\n");
-    for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmnG[j], j, tempvarG[j], tempcounts[j]);
-    for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f\n", j, tempmn(0, j), j, tempmn(1, j));
-
-    //print to screen as check
-    for(i = 0; i < npars; i++)
+    if(random == 2) 
     {
-        Rprintf("Covariance %d\n", i);
-        for(j = 0; j < 2; j++)
-        {
-            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcovini(j, k, i));
-            Rprintf("\n");
-        }
-        Rprintf("\n");
+        Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", 0, tempmnG[0], 0, sqrt(tempvarG[0] / adaptscale_sing), tempcounts[0]);
+        for(j = 1; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmn(0, j), j, sqrt(tempmn(1, j)), tempcounts[j]);
     }
+    else
+    {
+        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmnG[j], j, sqrt(tempvarG[j] / adaptscale_sing), tempcounts[j]);
+        if(random == 1) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", npars, tempmnG[npars], npars, sqrt(tempvarG[npars] / adaptscale_sing), tempcounts[npars]);
+    }
+
+//    //print to screen as check
+//    for(i = 0; i < npars; i++)
+//    {
+//        Rprintf("Covariance %d\n", i);
+//        for(j = 0; j < 2; j++)
+//        {
+//            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcovini(j, k, i));
+//            Rprintf("\n");
+//        }
+//        Rprintf("\n");
+//    }
     
     //print to screen as check
-    for(i = 0; i < npars; i++)
+    if(random == 2)
     {
-        Rprintf("Covariance (slice) %d\n", i);
-        for(j = 0; j < 2; j++)
+        for(i = 0; i < npars; i++)
         {
-            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k));
+            Rprintf("Covariance (slice) %d\n", i);
+            for(j = 0; j < 2; j++)
+            {
+                for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k) / adaptscale);
+                Rprintf("\n");
+            }
             Rprintf("\n");
         }
-        Rprintf("\n");
     }
     
     return(output);
