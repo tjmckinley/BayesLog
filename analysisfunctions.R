@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"), n.iter.training = NA)
+run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"), n.iter.training = 5000)
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -35,49 +35,10 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	stopifnot(!is.na(match(random, c("fixed", "globrand", "locrand"))))
 	random <- ifelse(random == "fixed", 0, ifelse(random == "globrand", 1, 2))
 	
-	#remove training run if fixed with no variable selection
-	if(!varselect & random == "fixed") n.iter.training <- NA
+	if(!varselect) n.iter.training <- 1
 	
 	#set priors
 	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), 0, 20), ncol = 2, byrow = T)
-	
-	#training run if required
-	if(!is.na(n.iter.training))
-	{
-	    gen_inits <- 1
-        inits <- list(nchains)
-        for(j in 1:nchains) inits[[j]] <- rep(1, ncol(dat))
-        inits_sigma <- list(nchains)
-        for(j in 1:nchains) inits_sigma[[j]] <- rep(1, ncol(dat) - 1)
-     
-	    #run model
-	    model.sim <- list(NULL)
-	    for(j in 1:nchains)
-	    {
-            model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter.training, scale, orignpars, 0, ninitial, random)
-            if(random == 0)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
-            }
-            if(random == 1)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
-            }
-            if(random == 2)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", vars), paste0("I_", vars), "post")
-            }
-            model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
-            
-            #extract initial values
-            inits[[j]] <- model.sim[[j]][n.iter.training, 1:ncol(dat)]
-            inits_sigma[[j]] <- model.sim[[j]][n.iter.training, (ncol(dat) + 1):(ncol(model.sim[[j]]) - 1)]
-        }
-        gen_inits <- 0
-    }
 	
 	#generate initial values
 	if(!is.list(inits))
@@ -110,7 +71,7 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random, n.iter.training)
         if(random == 0)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]

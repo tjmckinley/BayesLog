@@ -27,12 +27,12 @@ double mvdnormArma(arma::vec x, arma::vec mu, arma::mat sigma)
 }
 
 //function to calculate posterior mean and variance
-void calc_meanvar(int i, int ninitial, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior, int postelement, int parelement, int indelement)
+void calc_meanvar(int i, int l, int ninitial, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior, int postelement, int parelement, int indelement)
 {
     int j, k, m;
 
     //update means and variances for adaptive proposal
-    if((i + 1) == ninitial)
+    if((l + 1) == ninitial)
     {
         //calculate mean
         for(k = 0; k <= i; k++)
@@ -104,11 +104,11 @@ void calc_meanvar(int i, int ninitial, NumericVector *tempmn, NumericVector *tem
 }
 
 //function to calculate posterior mean and covariance matrix
-void calc_meancov(int i, int ninitial, int slice, arma::mat *tempmn, arma::cube *tempcov, IntegerVector *tempcounts, arma::cube *meanmat, NumericMatrix posterior, IntegerVector postelement, int indelement, int npars)
+void calc_meancov(int i, int l, int ninitial, int slice, arma::mat *tempmn, arma::cube *tempcov, IntegerVector *tempcounts, arma::cube *meanmat, NumericMatrix posterior, IntegerVector postelement, int indelement, int npars)
 {
     int j, k, m;
 
-    if((i + 1) == ninitial)
+    if((l + 1) == ninitial)
     {
         //calculate means
         for(m = 0; m <= i; m++)
@@ -253,7 +253,7 @@ double loglike (arma::mat pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random, int nitertraining)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
@@ -271,9 +271,10 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     //  mean and variance for use in proposal steps
     // 'random' is an indicator corresponding to whether a "fixed" (0), 
     //      global "random" (1) or local "random" (2) effect required
+    // 'nitertraining' is length of training run
     
     //initialise indexing variables
-    int i, j, k, m;
+    int i, j, k, l, m;
     
     // calculate number of parameters
     int npars = ini_pars.size();
@@ -285,6 +286,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Number of regression parameters (excluding intercept) = %d\n", nregpars);
     Rprintf("Variable selection (1/0): %d\n", varselect);
     Rprintf("Number of initial iterations before change in add/rem proposals: %d\n", ninitial);
+    if(varselect == 1) Rprintf("Number of iterations in training run: %d\n", nitertraining);
     
     if(random == 0) Rprintf("\nFIXED SD components used\n");
     if(random == 1) Rprintf("\nGLOBAL RANDOM SD component used\n");
@@ -345,14 +347,14 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < nregpars; i++) pars(1, i + 1) = sqrt(priors(0, 1));
         }
         //sample initial values for variable selection if required    
-        if(varselect == 1)
-        {
-            for(i = 0; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
-        }
-        else
-        {
+//        if(varselect == 1)
+//        {
+//            for(i = 0; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+//        }
+//        else
+//        {
             for(i = 0; i < npars; i++) indpars[i] = 1;
-        }
+//        }
         
         for(i = 0; i < nregpars; i++) if(pars(1, i + 1) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
         
@@ -463,11 +465,31 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     
     //set up proposal probabilities to control variable selection
     //and mixing
-    double psamp = (varselect == 1 ? 0.5:1.0);
+    double psamp = 1.0;//(varselect == 1 ? 0.5:1.0);
+    
+    //check niter against training run
+    if(varselect == 1)
+    {
+        if(niter < nitertraining) stop("niter less than nitertraining\n");
+        if(nitertraining < ninitial) stop("ninitial greater than nitertraining\n");
+    }
+    if(niter < ninitial) stop("ninitial greater than niter\n");
     
     // run chain
-    for(i = 0; i < niter; i++)
+    i = 0;
+    l = 0;
+    if(varselect == 1 && nitertraining > 1) Rprintf("Starting training run:\n");
+    else Rprintf("Starting run:\n");
+    while(i < niter)
     {
+        if(((i + 1) % nitertraining) == 0 && (((l + 1) % nitertraining) == 0) && nitertraining > 1)
+        {
+            //reset psamp
+            psamp = 0.5;
+            //reset counts
+            i = 0;
+            Rprintf("\nStarting main run:\n");
+        }
         for(j = 0; j < npars; j++) for(k = 0; k < 2; k++) pars_prop(k, j) = pars(k, j);
         
         // propose new value for intercept
@@ -877,7 +899,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         }
         
         // record posterior mean and variances for use in proposals
-        if ((i + 1) >= ninitial)
+        if ((l + 1) >= ninitial)
         {
             if(random == 0)
             {
@@ -885,7 +907,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 {
                     //rescale variances if necessary
                     if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] / adaptscale_sing;
-                    calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + j);
+                    calc_meanvar(i, l, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + j);
                     if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] * adaptscale_sing;
                  }
             }
@@ -895,18 +917,18 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 {   
                     //rescale variances if necessary
                     if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] / adaptscale_sing; 
-                    calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + 1 + j);
+                    calc_meanvar(i, l, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + 1 + j);
                     if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] * adaptscale_sing;
                 }
                 if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] / adaptscale_sing;
                 //next line links to intercept for inclusion criteria in order to update sigma (fudge)
-                calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, npars, npars, npars + 1);
+                calc_meanvar(i, l, ninitial, &tempmnG, &tempvarG, &tempcounts, output, npars, npars, npars + 1);
                 if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] * adaptscale_sing;
             }
             if(random == 2)
             {
                 if(tempcounts[0] >= 2) tempvarG[0] = tempvarG[0] / adaptscale_sing;
-                calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, 0, 0, 2 * npars);
+                calc_meanvar(i, l, ninitial, &tempmnG, &tempvarG, &tempcounts, output, 0, 0, 2 * npars);
                 if(tempcounts[0] >= 2) tempvarG[0] = tempvarG[0] * adaptscale_sing;
                 for(j = 1; j < npars; j++)
                 {
@@ -915,11 +937,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     //set postelement
                     postelement[0] = j;
                     postelement[1] = j + npars;
-                    calc_meancov(i, ninitial, j, &tempmn, &tempcov, &tempcounts, &tempmeanmat, output, postelement, j + 2 * npars, 2);
+                    calc_meancov(i, l, ninitial, j, &tempmn, &tempcov, &tempcounts, &tempmeanmat, output, postelement, j + 2 * npars, 2);
                     if(tempcounts[j] >= 2) tempcov.slice(j) = tempcov.slice(j) * adaptscale;
                 }
             }
         }
+        i++;
+        l++;
     }
     
     //print estimates of posterior means and variances as a test
