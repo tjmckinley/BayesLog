@@ -323,7 +323,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             }
             if(random == 2)
             {
-                for(i = 0; i < nregpars; i++) pars(1, i + 1) = runif(1, priors(npars, 0), priors(npars, 1))[0];
+                for(i = 0; i < npars; i++) pars(1, i) = runif(1, priors(npars, 0), priors(npars, 1))[0];
             }
         }
         else
@@ -331,7 +331,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < npars; i++) pars(0, i) = ini_pars[i];
             if(random == 2)
             {
-                for(i = 0; i < nregpars; i++) pars(1, i + 1) = ini_sigma[i];
+                for(i = 0; i < npars; i++) pars(1, i) = ini_sigma[i];
             }
             if(random == 1)
             {
@@ -347,14 +347,15 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //sample initial values for variable selection if required    
         if(varselect == 1)
         {
-            for(i = 0; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
+            indpars[0] = 1;
+            for(i = 1; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
         }
         else
         {
             for(i = 0; i < npars; i++) indpars[i] = 1;
         }
         
-        for(i = 0; i < nregpars; i++) if(pars(1, i + 1) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
+        for(i = 0; i < npars; i++) if(pars(1, i) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
         
         //check the initial values produce a finite log-posterior
         LL_curr = loglike(pars, indpars, data);
@@ -363,17 +364,17 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add prior for intercept
         acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
-        for(j = 0; j < nregpars; j++)
+        for(j = 0; j < npars; j++)
         {
-            if(indpars[j + 1] == 1) acc_curr += R::dnorm(pars(0, j + 1), priors(j + 1, 0), pars(1, j + 1), 1);
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars(0, j), priors(j, 0), pars(1, j), 1);
         }
         //add variance component
         if(random == 1) acc_curr += R::dunif(sigmafull, priors(npars, 0), priors(npars, 1), 1);
         if(random == 2)
         {
-            for(j = 0; j < nregpars; j++)
+            for(j = 0; j < npars; j++)
             {
-                if(indpars[j + 1] == 1) acc_curr += R::dunif(pars(1, j + 1), priors(npars, 0), priors(npars, 1), 1);
+                if(indpars[j] == 1) acc_curr += R::dunif(pars(1, j), priors(npars, 0), priors(npars, 1), 1);
             }
         }
         if(R_finite(acc_curr) != 0) ind = 1;
@@ -398,7 +399,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     if(random == 2)
     {
         Rprintf("\nInitial SD components:\n");
-        for(j = 0; j < nregpars; j++) Rprintf("sigma[%d] = %f\n", j + 1, pars(1, j + 1));
+        for(j = 0; j < npars; j++) Rprintf("sigma[%d] = %f\n", j, pars(1, j));
     }
     Rprintf("\n");
     
@@ -470,18 +471,31 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     {
         for(j = 0; j < npars; j++) for(k = 0; k < 2; k++) pars_prop(k, j) = pars(k, j);
         
-        // propose new value for intercept
-        if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, 0) = rnorm(1, pars(0, 0), 0.1)[0];
-        else pars_prop(0, 0) = rnorm(1, pars(0, 0), sqrt(tempvarG[0]))[0];
+        if(random == 2)
+        {
+            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop.col(0) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars.col(0), tempcovini.slice(0)));
+            else pars_prop.col(0) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars.col(0), tempcov.slice(0)));
+        }
+        else
+        {
+            // propose new value for intercept
+            if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, 0) = rnorm(1, pars(0, 0), 0.1)[0];
+            else pars_prop(0, 0) = rnorm(1, pars(0, 0), sqrt(tempvarG[0]))[0];
+        }
         nattempt[0]++;
         
-        // update log-likelihood
-        LL_prop = loglike(pars_prop, indpars, data);
         // calculate log-likelihood – log-prior
+        LL_prop = loglike(pars_prop, indpars, data);
         acc_prop = LL_prop;
-        acc_prop += R::dnorm(pars_prop(0, 0), priors(0, 0), sqrt(priors(0, 1)), 1);
         acc_curr = LL_curr;
-        acc_curr += R::dnorm(pars(0, 0), priors(0, 0), sqrt(priors(0, 1)), 1);
+        
+        acc_curr += R::dnorm(pars(0, 0), priors(0, 0), pars(1, 0), 1);
+        acc_prop += R::dnorm(pars_prop(0, 0), priors(0, 0), pars_prop(1, 0), 1);
+        if(random == 2)
+        {
+            acc_curr += R::dunif(pars(1, 0), priors(npars, 0), priors(npars, 1), 1);
+            acc_prop += R::dunif(pars_prop(1, 0), priors(npars, 0), priors(npars, 1), 1);
+        }
         //proposals cancel
         
         //accept/reject proposal
@@ -491,12 +505,21 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             if(log(runif(1, 0.0, 1.0)[0]) < acc)
             {
                 pars(0, 0) = pars_prop(0, 0);
+                pars(1, 0) = pars_prop(1, 0);
                 nacc[0]++;
                 LL_curr = LL_prop;
             }
-            else pars_prop(0, 0) = pars(0, 0);
+            else
+            {
+                pars_prop(0, 0) = pars(0, 0);
+                pars_prop(1, 0) = pars(1, 0);
+            }
         }
-        else pars_prop(0, 0) = pars(0, 0);
+        else
+        {
+            pars_prop(0, 0) = pars(0, 0);
+            pars_prop(1, 0) = pars(1, 0);
+        }
         
         //now propose moves for remaining regression terms
         for(k = 0; k < orignpars; k++)
@@ -806,17 +829,17 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //add prior for intercept
         acc_curr += R::dnorm(pars(0, 0), priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
-        for(j = 0; j < nregpars; j++)
+        for(j = 0; j < npars; j++)
         {
-            if(indpars[j + 1] == 1) acc_curr += R::dnorm(pars(0, j + 1), priors(j + 1, 0), pars(1, j + 1), 1);
+            if(indpars[j] == 1) acc_curr += R::dnorm(pars(0, j), priors(j, 0), pars(1, j), 1);
         }
         //add variance component
         if(random == 1) acc_curr += R::dunif(sigmafull, priors(npars, 0), priors(npars, 1), 1);
         if(random == 2)
         {
-            for(j = 0; j < nregpars; j++)
+            for(j = 0; j < npars; j++)
             {
-                if(indpars[j + 1] == 1) acc_curr += R::dunif(pars(1, j + 1), priors(npars, 0), priors(npars, 1), 1);
+                if(indpars[j] == 1) acc_curr += R::dunif(pars(1, j), priors(npars, 0), priors(npars, 1), 1);
             }
         }
         if(R_finite(acc_curr) == 0) stop("Non-finite posterior produced");
