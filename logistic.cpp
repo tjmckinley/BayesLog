@@ -628,7 +628,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         }
                     }
                     acc = acc_prop - acc_curr;
-                    acc -= log(1.0 - psamp);
+//                    acc -= log(1.0 - psamp);
                     
                     //accept/reject proposal
                     if(R_finite(acc) != 0)
@@ -680,76 +680,91 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
 //                Rprintf("add\n");
                 //ADDITION
-                
-                //simulate new parameter values
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                if(runif(1, 0.0, 1.0)[0] < (1.0 - psamp))
                 {
-                    if(random == 0) pars_prop(1, j) = sqrt(priors(0, 1));
-                    if(random == 1) pars_prop(1, j) = sigmafull;
-                    if(random == 2)
+                    //simulate new parameter values
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
                     {
-                        //use rejection sampling to sample from truncated normal
-                        pars_prop(1, j) = priors(npars, 1) + 1.0;
-                        while(pars_prop(1, j) > priors(npars, 1))
+                        if(random == 0) pars_prop(1, j) = sqrt(priors(0, 1));
+                        if(random == 1) pars_prop(1, j) = sigmafull;
+                        if(random == 2)
                         {
-                            pars_prop(1, j) = runif(1, priors(npars, 0), priors(npars, 1))[0];
-                            //set numerator
-                            acc_prop = R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
-                            acc_prop -= R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
-                            acc_prop = R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1) - log(acc_prop);
-                            //set denominator
-                            acc_curr = priors(npars, 1) - priors(npars, 0);
-                            acc_curr = (acc_curr + 1.0) / acc_curr;
-                            acc_curr = log(acc_curr) + log(tempmn(1, j));
-                            //accept/reject proposal
-                            acc = acc_prop - acc_curr;
-                            if(log(runif(1, 0.0, 1.0)[0]) >= acc) pars_prop(1, j) = priors(npars, 1) + 1.0;           
-                        }
-                    }
-                    pars_prop(0, j) = rnorm(1, priors(j, 0), pars_prop(1, j))[0];
-                    indpars[j] = 1;
-                    nattempt_add[j]++;
-                }
-                
-                // calculate log-likelihood – log-prior
-                LL_prop = loglike(pars_prop, indpars, data);
-                acc_prop = LL_prop;
-                acc_curr = LL_curr;
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                {
-                    acc_prop += R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
-                    if(random == 2) acc_prop += R::dunif(pars_prop(1, j), priors(npars, 0), priors(npars, 1), 1);
-                }
-                
-                //adjust for proposals
-                for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                {
-                    acc_prop -= R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
-                    if(random == 2)
-                    {
-                        acc_prop -= R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1);
-                        acc_prop += log(R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0) - R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0));
-                    }
-                }
-                acc = acc_prop - acc_curr;
-                acc += log(1.0 - psamp);
-                
-                //accept/reject proposal
-                if(R_finite(acc) != 0)
-                {
-                    if(log(runif(1, 0.0, 1.0)[0]) < acc)
-                    {
-                        for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                        {
-                            if(random == 2) pars.col(j) = pars_prop.col(j);
-                            else
+                            //use rejection sampling to sample from truncated normal
+                            pars_prop(1, j) = priors(npars, 1) + 1.0;
+                            while(pars_prop(1, j) > priors(npars, 1))
                             {
-                                pars(0, j) = pars_prop(0, j);
-                                pars(1, j) = pars_prop(1, j);
+                                pars_prop(1, j) = runif(1, priors(npars, 0), priors(npars, 1))[0];
+                                //set numerator
+                                acc_prop = R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
+                                acc_prop -= R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
+                                acc_prop = R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1) - log(acc_prop);
+                                //set denominator
+                                acc_curr = priors(npars, 1) - priors(npars, 0);
+                                acc_curr = (acc_curr + 1.0) / acc_curr;
+                                acc_curr = log(acc_curr) + log(tempmn(1, j));
+                                //accept/reject proposal
+                                acc = acc_prop - acc_curr;
+                                if(log(runif(1, 0.0, 1.0)[0]) >= acc) pars_prop(1, j) = priors(npars, 1) + 1.0;           
                             }
-                            nacc_add[j]++;
                         }
-                        LL_curr = LL_prop;
+                        pars_prop(0, j) = rnorm(1, priors(j, 0), pars_prop(1, j))[0];
+                        indpars[j] = 1;
+                        nattempt_add[j]++;
+                    }
+                    
+                    // calculate log-likelihood – log-prior
+                    LL_prop = loglike(pars_prop, indpars, data);
+                    acc_prop = LL_prop;
+                    acc_curr = LL_curr;
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        acc_prop += R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
+                        if(random == 2) acc_prop += R::dunif(pars_prop(1, j), priors(npars, 0), priors(npars, 1), 1);
+                    }
+                    
+                    //adjust for proposals
+                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                    {
+                        acc_prop -= R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
+                        if(random == 2)
+                        {
+                            acc_prop -= R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1);
+                            acc_prop += log(R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0) - R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0));
+                        }
+                    }
+                    acc = acc_prop - acc_curr;
+//                    acc += log(1.0 - psamp);
+                    
+                    //accept/reject proposal
+                    if(R_finite(acc) != 0)
+                    {
+                        if(log(runif(1, 0.0, 1.0)[0]) < acc)
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                            {
+                                if(random == 2) pars.col(j) = pars_prop.col(j);
+                                else
+                                {
+                                    pars(0, j) = pars_prop(0, j);
+                                    pars(1, j) = pars_prop(1, j);
+                                }
+                                nacc_add[j]++;
+                            }
+                            LL_curr = LL_prop;
+                        }
+                        else
+                        {
+                            for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
+                            {
+                                if(random == 2) pars_prop.col(j) = pars.col(j);
+                                else
+                                {
+                                    pars_prop(0, j) = pars(0, j);
+                                    pars_prop(1, j) = pars(1, j);
+                                }
+                                indpars[j] = 0;
+                            }
+                        }
                     }
                     else
                     {
@@ -763,19 +778,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             }
                             indpars[j] = 0;
                         }
-                    }
-                }
-                else
-                {
-                    for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
-                    {
-                        if(random == 2) pars_prop.col(j) = pars.col(j);
-                        else
-                        {
-                            pars_prop(0, j) = pars(0, j);
-                            pars_prop(1, j) = pars(1, j);
-                        }
-                        indpars[j] = 0;
                     }
                 }
             }
