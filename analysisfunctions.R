@@ -205,6 +205,7 @@ summary.varselect <- function(output, topmodels = 5, ...)
     if(varselect == 0) print(summary(output))
     else
     {
+        nchains <- length(output)
         output <- lapply(output, as.matrix)
         indicators <- lapply(output, function(x) x[, grep(glob2rx("I_*"), colnames(x)), drop = F])
         output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x)), drop = F])
@@ -247,21 +248,21 @@ summary.varselect <- function(output, topmodels = 5, ...)
             c(mean(x), sd(x))
         })))
         #sort by average
-        topmodels <- ifelse(topmodels > nrow(indicators2), nrow(indicators2), topmodels) 
-        indicators2 <- indicators2[sort.list(indicators2[, 3], decreasing = T), 3:4][1:topmodels, ]
+        topmodels <- ifelse(topmodels > nrow(indicators2), nrow(indicators2), topmodels)
+        indicators2 <- indicators2[sort.list(indicators2[, nchains + 1], decreasing = T), ][1:topmodels, ]
         indicators1 <- rownames(indicators2)
         indicators1 <- sapply(indicators1, function(y) strsplit(y, "\\.")[[1]])
         indicators2 <- apply(indicators2, 1, function(x)
         {
             x <- signif(x, digits = 2)
-            c(as.character(x[1]), paste0("(", x[2], ")"))
+            c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
         })
         indicators1 <- rbind(indicators1, indicators2)
         colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
         var <- colnames(output[[1]])[-1]
         if(length(grep(glob2rx("sigma*"), var)) > 0) var <- var[-grep(glob2rx("sigma*"), var)]
         var <- var[-c(length(var))]
-        rownames(indicators1) <- c(var, "Mean", "SD")
+        rownames(indicators1) <- c(var, paste("Chain", 1:nchains), "Mean", "SD")
         indicators1[indicators1 == "0"] <- ""
         print(indicators1, quote = F)
     }
