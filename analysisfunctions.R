@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 50000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"), n.iter.training = 5000)
+run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 200000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"))
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -35,11 +35,6 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	stopifnot(!is.na(match(random, c("fixed", "globrand", "locrand"))))
 	random <- ifelse(random == "fixed", 0, ifelse(random == "globrand", 1, 2))
 	
-	if(!varselect) n.iter.training <- 1
-	
-	#set priors
-	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), 0, 20), ncol = 2, byrow = T)
-	
 	#generate initial values
 	if(!is.list(inits))
 	{
@@ -67,11 +62,14 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	    }
 	}
 	
+	#set priors
+	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), 0, 20), ncol = 2, byrow = T)
+	
 	#run model
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random, n.iter.training)
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
