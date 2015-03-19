@@ -103,125 +103,6 @@ void calc_meanvar(int i, int ninitial, NumericVector *tempmn, NumericVector *tem
     return;
 }
 
-//function to calculate posterior mean and covariance matrix
-void calc_meancov(int i, int ninitial, int slice, arma::mat *tempmn, arma::cube *tempcov, IntegerVector *tempcounts, arma::cube *meanmat, NumericMatrix posterior, IntegerVector postelement, int indelement, int npars)
-{
-    int j, k, m;
-
-    if((i + 1) == ninitial)
-    {
-        //calculate means
-        for(m = 0; m <= i; m++)
-        {
-            if(posterior(m, indelement) == 1)
-            {
-                (*tempcounts)[slice]++;
-                for(k = 0; k < npars; k++) (*tempmn).col(slice)[k] += posterior(m, postelement[k]);
-            }
-        }
-        if((*tempcounts)[slice] > 1)
-        {
-            for(k = 0; k < npars; k++) (*tempmn).col(slice)[k] = (*tempmn).col(slice)[k] / ((double) (*tempcounts)[slice]);
-        }
-        else
-        {
-            for(k = 0; k < npars; k++) (*tempmn).col(slice)[k] = 0.0;
-        }
-        
-        //calculate product of means
-        for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat).slice(slice)(j, k) = (*tempmn).col(slice)[j] * (*tempmn).col(slice)[k];
-        
-        //calculate variance
-        for(j = 0; j < npars; j++)
-        {
-            for(k = 0; k < npars; k++)
-            {
-                if((*tempcounts)[slice] > 1)
-                {
-                    (*tempcov).slice(slice)(j, k) = 0.0;
-                    for(m = 0; m <= i; m++) if(posterior(m, indelement) == 1) (*tempcov).slice(slice)(j, k) += posterior(m, postelement[j]) * posterior(m, postelement[k]);
-                    (*tempcov).slice(slice)(j, k) -= (*tempcounts)[slice] * (*meanmat).slice(slice)(j, k);
-                    (*tempcov).slice(slice)(j, k) = (*tempcov).slice(slice)(j, k) / ((double) (*tempcounts)[slice] - 1.0);
-                }
-                else
-                {
-                    if(j == k) (*tempcov).slice(slice)(j, k) = pow(0.1, 2.0);
-                    else (*tempcov).slice(slice)(j, k) = 0.0;
-                }
-            }
-        }
-    }
-    else
-    {
-        //start recursively updating variance
-        if(posterior(i, indelement) == 1)
-        {
-            (*tempcounts)[slice]++;
-            for(j = 0; j < npars; j++)
-            {
-                for(k = 0; k < npars; k++)
-                {
-                    if((*tempcounts)[slice] > 2) (*tempcov).slice(slice)(j, k) = ((*tempcov).slice(slice)(j, k) * ((*tempcounts)[slice] - 2.0)) + (((*tempcounts)[slice] - 1.0) * (*meanmat).slice(slice)(j, k));
-                }
-            }
-        }
-        for(j = 0; j < npars; j++)
-        {
-            //now update mean
-            if((*tempcounts)[slice] > 2) (*tempmn).col(slice)[j] = (((*tempcounts)[slice] - 1.0) * (*tempmn).col(slice)[j] + posterior(i, postelement[j])) / ((double) (*tempcounts)[slice]);
-            else
-            {
-                if((*tempcounts)[slice] == 2)
-                {
-                    //calculate mean
-                    for(k = 0; k <= i; k++)
-                    {
-                        if(posterior(k, indelement) == 1) (*tempmn).col(slice)[j] += posterior(k, postelement[j]);
-                    }
-                    (*tempmn).col(slice)[j] = (*tempmn).col(slice)[j] / ((double) (*tempcounts)[slice]);
-                }
-                else (*tempmn).col(slice)[j] = 0.0;
-            }
-        }
-        
-        //update product of means
-        for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat).slice(slice)(j, k) = (*tempmn).col(slice)[j] * (*tempmn).col(slice)[k];
-        
-        //now update variance
-        if(posterior(i, indelement) == 1)
-        {
-            for(j = 0; j < npars; j++)
-            {
-                for(k = 0; k < npars; k++)
-                {
-                    if((*tempcounts)[slice] > 2)
-                    {
-                        (*tempcov).slice(slice)(j, k) += posterior(i, postelement[j]) * posterior(i, postelement[k]);
-                        (*tempcov).slice(slice)(j, k) -= (*tempcounts)[slice] * (*meanmat).slice(slice)(j, k);
-                        (*tempcov).slice(slice)(j, k) = (*tempcov).slice(slice)(j, k) / ((double) (*tempcounts)[slice] - 1.0);
-                    }
-                    else
-                    {
-                        if((*tempcounts)[slice] == 2)
-                        {
-                            (*tempcov).slice(slice)(j, k) = 0.0;
-                            for(m = 0; m <= i; m++) if(posterior(m, indelement) == 1) (*tempcov).slice(slice)(j, k) += posterior(m, postelement[j]) * posterior(m, postelement[k]);
-                            (*tempcov).slice(slice)(j, k) -= (*tempcounts)[slice] * (*meanmat).slice(slice)(j, k);
-                            (*tempcov).slice(slice)(j, k) = (*tempcov).slice(slice)(j, k) / ((double) (*tempcounts)[slice] - 1.0);
-                        }
-                        else
-                        {
-                            if(j == k) (*tempcov).slice(slice)(j, k) = pow(0.1, 2.0);
-                            else (*tempcov).slice(slice)(j, k) = 0.0;
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return;
-}
-
 // function for calculating the log-likelihood
 double loglike (arma::mat pars, IntegerVector indpars, NumericMatrix data)
 {
@@ -404,26 +285,16 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("\n");
     
     // set up adaptive proposal distribution
-    double adaptscale = pow(2.38, 2.0) / 2.0;
     double adaptscale_sing = pow(2.38, 2.0);
     
     //use cube class to create 3D matrix for adaptive proposal for local RE
-    arma::mat tempmn(2, npars);
-    tempmn.zeros();
+    NumericVector tempmn(npars);
+    NumericVector tempsigmamn(npars);
+    NumericVector tempvar(npars, 0.1 * 0.1);
+    NumericVector tempsigmavar(npars, 0.1 * 0.1);
     IntegerVector tempcounts(npars);
-    arma::cube tempcovini(2, 2, npars);
-    tempcovini.zeros();
-    arma::cube tempcov(2, 2, npars);
-    tempcov.zeros();
-    for(i = 0; i < npars; i++) for(j = 0; j < 2; j++) tempcovini(j, j, i) = pow(0.1, 2.0) / 2.0;
-    for(i = 0; i < npars; i++) for(j = 0; j < 2; j++) tempcov(j, j, i) = pow(0.1, 2.0) / 2.0;
-    arma::cube tempmeanmat(2, 2, npars);
-    tempmeanmat.zeros();
-    IntegerVector postelement(2);
-    
-    //vectors for adaptive proposal for global RE
-    NumericVector tempmnG(npars + 1);
-    NumericVector tempvarG(npars + 1, pow(0.1, 2.0));
+    IntegerVector tempsigmacounts(npars);
+    double temp = 0.0;
     
 //    //print to screen as check
 //    for(i = 0; i < npars; i++)
@@ -476,7 +347,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         
         // propose new value for intercept
         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, 0) = rnorm(1, pars(0, 0), 0.1)[0];
-        else pars_prop(0, 0) = rnorm(1, pars(0, 0), sqrt(tempcov.slice(0)(0, 0)))[0];
+        else pars_prop(0, 0) = rnorm(1, pars(0, 0), sqrt(tempvar[0]))[0];
         nattempt[0]++;
         
         // calculate log-likelihood – log-prior
@@ -516,7 +387,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     {
                         // propose new value for intercept
                         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, j) = rnorm(1, pars(0, j), 0.1)[0];
-                        else pars_prop(0, j) = rnorm(1, pars(0, j), sqrt(tempcov.slice(j)(0, 0)))[0];
+                        else pars_prop(0, j) = rnorm(1, pars(0, j), sqrt(tempvar[j]))[0];
                         nattempt[j]++;
                     }
                     // calculate log-likelihood – log-prior
@@ -583,8 +454,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         acc_curr -= R::dnorm(pars(0, j), priors(j, 0), pars(1, j), 1);
                         if(random == 2)
                         {
-                            acc_curr -= R::dnorm(pars(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1);
-                            acc_curr += log(R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0) - R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0));
+                            temp = (tempcounts[j] < 2 ? sqrt(tempsigmavar[j]):(sqrt(tempsigmavar[j]) / adaptscale_sing));
+                            acc_curr -= R::dnorm(pars(1, j), tempsigmamn[j], temp, 1);
+                            acc_curr += log(R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0));
                         }
                     }
                     acc = acc_prop - acc_curr;
@@ -639,14 +511,15 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                             while(pars_prop(1, j) > priors(npars, 1))
                             {
                                 pars_prop(1, j) = runif(1, priors(npars, 0), priors(npars, 1))[0];
+                                temp = (tempcounts[j] < 2 ? sqrt(tempsigmavar[j]):(sqrt(tempsigmavar[j]) / adaptscale_sing));
                                 //set numerator
-                                acc_prop = R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
-                                acc_prop -= R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0);
-                                acc_prop = R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1) - log(acc_prop);
+                                acc_prop = R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0);
+                                acc_prop -= R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0);
+                                acc_prop = R::dnorm(pars_prop(1, j), tempsigmamn[j], temp, 1) - log(acc_prop);
                                 //set denominator
                                 acc_curr = priors(npars, 1) - priors(npars, 0);
                                 acc_curr = (acc_curr + 1.0) / acc_curr;
-                                acc_curr = log(acc_curr) + log(tempmn(1, j));
+                                acc_curr = log(acc_curr) + log(tempsigmamn[j]);
                                 //accept/reject proposal
                                 acc = acc_prop - acc_curr;
                                 if(log(runif(1, 0.0, 1.0)[0]) >= acc) pars_prop(1, j) = priors(npars, 1) + 1.0;           
@@ -673,8 +546,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         acc_prop -= R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
                         if(random == 2)
                         {
-                            acc_prop -= R::dnorm(pars_prop(1, j), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1);
-                            acc_prop += log(R::pnorm(priors(npars, 1), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0) - R::pnorm(priors(npars, 0), tempmn(1, j), sqrt(tempcov.slice(j)(1, 1)), 1, 0));
+                            acc_prop -= R::dnorm(pars_prop(1, j), tempsigmamn[j], temp, 1);
+                            acc_prop += log(R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0));
                         }
                     }
                     acc = acc_prop - acc_curr;
@@ -717,7 +590,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         {
             //now propose update for SD hyperparameter
             if(runif(1, 0.0, 1.0)[0] < scale) sigmafull_prop = rnorm(1, sigmafull, 0.1)[0];
-            else sigmafull_prop = rnorm(1, sigmafull, sqrt(tempvarG[npars]))[0];
+            else sigmafull_prop = rnorm(1, sigmafull, sqrt(tempsigmavar[0]))[0];
             nattemptsigmafull++;
             
             if(sigmafull_prop > priors(npars, 0) && sigmafull_prop < priors(npars, 1))
@@ -759,7 +632,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             {
                 //now propose update for SD hyperparameter
                 if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(1, j) = rnorm(1, pars(1, j), 0.1)[0];
-                else pars_prop(1, j) = rnorm(1, pars(1, j), sqrt(tempcov.slice(j)(1, 1)))[0];
+                else pars_prop(1, j) = rnorm(1, pars(1, j), sqrt(tempsigmavar[j]))[0];
                 nattempt_sigma[j]++;
                 
                 if(pars_prop(1, j) > priors(npars, 0) && pars_prop(1, j) < priors(npars, 1))
@@ -919,9 +792,9 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = 0; j < npars; j++)
                 {
                     //rescale variances if necessary
-                    if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] / adaptscale_sing;
-                    calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + j);
-                    if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] * adaptscale_sing;
+                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing;
+                    calc_meanvar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, npars + j);
+                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
                  }
             }
             if(random == 1)
@@ -929,26 +802,32 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                 for(j = 0; j < npars; j++)
                 {   
                     //rescale variances if necessary
-                    if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] / adaptscale_sing; 
-                    calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, j, j, npars + 1 + j);
-                    if(tempcounts[j] >= 2) tempvarG[j] = tempvarG[j] * adaptscale_sing;
+                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing; 
+                    calc_meanvar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, npars + 1 + j);
+                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
                 }
-                if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] / adaptscale_sing;
+                if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] / adaptscale_sing;
                 //next line links to intercept for inclusion criteria in order to update sigma (fudge)
-                calc_meanvar(i, ninitial, &tempmnG, &tempvarG, &tempcounts, output, npars, npars, npars + 1);
-                if(tempcounts[npars] >= 2) tempvarG[npars] = tempvarG[npars] * adaptscale_sing;
+                calc_meanvar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, output, 0, 0, npars + 1);
+                if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] * adaptscale_sing;
             }
             if(random == 2)
             {
                 for(j = 0; j < npars; j++)
                 {
-                    //rescale covariances if necessary
-                    if(tempcounts[j] >= 2) tempcov.slice(j) = tempcov.slice(j) / adaptscale;
-                    //set postelement
-                    postelement[0] = j;
-                    postelement[1] = j + npars;
-                    calc_meancov(i, ninitial, j, &tempmn, &tempcov, &tempcounts, &tempmeanmat, output, postelement, j + 2 * npars, 2);
-                    if(tempcounts[j] >= 2) tempcov.slice(j) = tempcov.slice(j) * adaptscale;
+                    //rescale variances if necessary
+                    if(tempcounts[j] >= 2)
+                    {
+                        tempvar[j] = tempvar[j] / adaptscale_sing;
+                        tempsigmavar[j] = tempsigmavar[j] / adaptscale_sing; 
+                    }
+                    calc_meanvar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, 2 * npars + j);
+                    calc_meanvar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, output, j + npars, j, 2 * npars + j);
+                    if(tempcounts[j] >= 2)
+                    {
+                        tempvar[j] = tempvar[j] * adaptscale_sing;
+                        tempsigmavar[j] = tempsigmavar[j] * adaptscale_sing; 
+                    } 
                 }
             }
         }
@@ -958,12 +837,13 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("TEST MEANS\n");
     if(random == 2) 
     {
-        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmn(0, j), j, sqrt(tempmn(1, j)), tempcounts[j]);
+        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j] / adaptscale_sing), tempcounts[j]);
+        for(j = 0; j < npars; j++) Rprintf("tempsigmamn[%d] = %f tempsigmavar[%d] = %f counts = %d\n", j, tempsigmamn[j], j, sqrt(tempsigmavar[j] / adaptscale_sing), tempcounts[j]);
     }
     else
     {
-        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmnG[j], j, sqrt(tempvarG[j] / adaptscale_sing), tempcounts[j]);
-        if(random == 1) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", npars, tempmnG[npars], npars, sqrt(tempvarG[npars] / adaptscale_sing), tempcounts[npars]);
+        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j] / adaptscale_sing), tempcounts[j]);
+        if(random == 1) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", npars, tempmn[npars], npars, sqrt(tempvar[npars] / adaptscale_sing), tempcounts[npars]);
     }
 
 //    //print to screen as check
@@ -979,19 +859,19 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
 //    }
     
     //print to screen as check
-    if(random == 2)
-    {
-        for(i = 0; i < npars; i++)
-        {
-            Rprintf("Covariance (slice) %d\n", i);
-            for(j = 0; j < 2; j++)
-            {
-                for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k) / adaptscale);
-                Rprintf("\n");
-            }
-            Rprintf("\n");
-        }
-    }
+//    if(random == 2)
+//    {
+//        for(i = 0; i < npars; i++)
+//        {
+//            Rprintf("Covariance (slice) %d\n", i);
+//            for(j = 0; j < 2; j++)
+//            {
+//                for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k) / adaptscale);
+//                Rprintf("\n");
+//            }
+//            Rprintf("\n");
+//        }
+//    }
     
     return(output);
 }
