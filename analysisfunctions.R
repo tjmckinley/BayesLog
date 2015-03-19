@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 200000, scale = 0.05, varselect = F, ninitial = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"))
+run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n.iter = 200000, scale = 0.05, varselect = F, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"))
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
