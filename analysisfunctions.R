@@ -164,6 +164,12 @@ createLinear <- function(data, response)
     return(list(data = data1, factindex = factindex, vars = vars))
 }
 
+#function to plot output
+plot.varselect <- function(output, ...)
+{
+    plot(output[[1]], ...)
+}
+
 #function to summarise output
 summary.varselect <- function(output, topmodels = 5, ...)
 {
