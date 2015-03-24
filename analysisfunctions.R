@@ -5,7 +5,7 @@ library(coda)
 sourceCpp("logistic.cpp")
 
 #function to run model
-run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = F, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"))
+run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = F, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
 {
 	#ensure response variable is in first row of data set
 	respind <- which(response == colnames(dat))
@@ -68,12 +68,16 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	#set priors
 	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), 0, 20), ncol = 2, byrow = T)
 	
+	#set training run if required
+	if(is.na(nitertraining) || !varselect) nitertraining <- 0
+	if(nitertraining >= niter) stop("'nitertraining' must be less than 'niter'")
+	
 	#run model
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
         vars <- varsorig
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, niter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]

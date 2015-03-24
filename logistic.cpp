@@ -134,7 +134,7 @@ double loglike (arma::mat pars, IntegerVector indpars, NumericMatrix data)
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, double scale, int orignpars, int varselect, int ninitial, int random)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'factindex' is a vector containing number of levels for each variable
@@ -145,6 +145,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     // 'gen_inits' is an indicator controlling whether initial values need to be generated
     // 'priors' is an (npars x 2) matrix containing the mean and var for Normal priors
     // 'niter' is the number of iterations over which to run the chain
+    // 'nitertraining' is the number of iterations over which to run the chain for the training run
+    //      (to generate initial values)
     // 'scale' is mixing proportion for adaptive MCMC
     // 'orignpars' is number of variables (disregarding dummy variables)
     // 'varselect' is an indicator controlling whether variable selection is to be done
@@ -166,6 +168,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     Rprintf("Number of regression parameters (excluding intercept) = %d\n", nregpars);
     Rprintf("Variable selection (1/0): %d\n", varselect);
     Rprintf("Number of initial iterations before adaptive proposal starts: %d\n", ninitial);
+    if(nitertraining > 0) Rprintf("Length of training run = %d\n", nitertraining);
     
     if(random == 0) Rprintf("\nFIXED SD components used\n");
     if(random == 1) Rprintf("\nGLOBAL RANDOM SD component used\n");
@@ -226,7 +229,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
             for(i = 0; i < nregpars; i++) pars(1, i + 1) = sqrt(priors(0, 1));
         }
         //sample initial values for variable selection if required    
-        if(varselect == 1)
+        if(varselect == 1 && nitertraining == 0)
         {
             indpars[0] = 1;
             for(i = 1; i < npars; i++) indpars[i] = (int) (runif(1, 0, 1)[0] > 0.5 ? 1:0);
@@ -338,11 +341,60 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     
     //set up proposal probabilities to control variable selection
     //and mixing
-    double psamp = (varselect == 1 ? 0.5:1.0);
+    double psamp = (varselect == 1 && nitertraining == 0 ? 0.5:1.0);
     
     // run chain
+    if(nitertraining > 0) Rprintf("Starting TRAINING run:\n");
+    else Rprintf("Starting run:\n");
     for(i = 0; i < niter; i++)
     {
+        if(nitertraining > 0)
+        {
+            if((i + 1) % nitertraining == 0)
+            {
+                //reset after training run
+                psamp = 0.5;
+                i = 0;
+                
+                for(j = 0; j < npars; j++)
+                {
+                    tempmn[j] = 0.0;
+                    tempsigmamn[j] = 0.0;
+                    tempvar[j] = 0.1 * 0.1;
+                    tempsigmavar[j] = 0.1 * 0.1;
+                    tempcounts[j] = 0;
+                    tempsigmacounts[j] = 0;
+                    
+                    nacc[j] = 0;
+                    nattempt[j] = 0;
+                    nacc_sigma[j] = 0;
+                    nattempt_sigma[j] = 0;
+                    nacc_add[j] = 0;
+                    nattempt_add[j] = 0;
+                    nacc_del[j] = 0;
+                    nattempt_del[j] = 0;
+                }
+                naccsigmafull = 0;
+                nattemptsigmafull = 0;
+                
+                nitertraining = 0;
+                
+                //print initial values to screen
+                Rprintf("\nInitial values after training run:\n");
+                for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars(0, j));
+                if(random == 0) Rprintf("\nFixed SD component: %f\n", sqrt(priors(0, 1)));
+                if(random == 1) Rprintf("\nInitial SD component after training run: %f\n", sigmafull);
+                if(random == 2)
+                {
+                    Rprintf("\nInitial SD components after training run:\n");
+                    for(j = 0; j < npars; j++) Rprintf("sigma[%d] = %f\n", j, pars(1, j));
+                }
+                Rprintf("\n");
+                
+                Rprintf("Starting MAIN run:\n");
+            }
+        }
+                
         for(j = 0; j < npars; j++) for(k = 0; k < 2; k++) pars_prop(k, j) = pars(k, j);
         
         // propose new value for intercept
