@@ -12,6 +12,9 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	stopifnot(length(respind) > 0)
 	if(respind != 1) dat <- cbind(dat[, respind], dat[, -respind])
 	
+	#check names don't have underscores
+	if(length(grep(glob2rx("*_*"), colnames(dat))) > 0) stop("Can't have variable names with underscores")
+	
 	#extract original number of variables
 	orignpars <- ncol(dat) - 1
 	
@@ -22,7 +25,7 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
     #extract components
     factindex <- as.numeric(table(dat$factindex))
     cumfactindex <- c(0, cumsum(factindex)[-length(factindex)]) + 1
-    vars <- dat$vars
+    varsorig <- dat$vars
     dat <- dat$data
 	
 	#convert data to matrix
@@ -69,7 +72,8 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, n.iter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        vars <- varsorig
+        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, niter, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
@@ -86,6 +90,16 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
             model.sim[[j]] <- model.sim[[j]][, -c(2 * npars + 3)]
         }
         if(!varselect) model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
+        else
+        {
+            #concatenate outputs from indicator variables
+            vars <- colnames(model.sim[[j]])
+            varind <- grep(glob2rx("I_*"), vars)
+            vars <- vars[varind]
+            vars <- sapply(strsplit(vars, "_"), function(x) x[2])
+            colnames(model.sim[[j]])[varind] <- paste0("I_", vars)
+            model.sim[[j]] <- model.sim[[j]][, -varind[duplicated(vars)]]
+        }   
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
     
@@ -176,19 +190,17 @@ summary.varselect <- function(output, topmodels = 5, ...)
         #print PPAs for variables
         cat("\n###########    PPAs for VARIABLES    ###########\n")
         PPAvar <- sapply(indicators, function(x) apply(x, 2, mean))
-        if(!is.matrix(PPAvar))
-        {
-            PPAvar <- matrix(PPAvar, nrow = 1)
-            rownames(PPAvar) <- colnames(indicators[[1]])
-        }
+        if(!is.matrix(PPAvar)) PPAvar <- matrix(PPAvar, nrow = 1)
+        rownames(PPAvar) <- sapply(strsplit(colnames(indicators[[1]]), "_"), function(x) x[2])
         PPAvar <- t(apply(PPAvar, 1, function(x)
         {
+            y <- x
             x <- x[!is.na(x)]
-            x <- c(mean(x), sd(x))
+            x <- c(y, mean(x), sd(x))
             x <- signif(x, digits = 2)
-            x <- c(as.character(x[1]), paste0("(", x[2], ")"))
+            x <- c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
         }))
-        colnames(PPAvar) <- c("Mean", "SD")
+        colnames(PPAvar) <- c(paste("Chain", 1:(ncol(PPAvar) - 2)), "Mean", "SD")
         print(t(PPAvar), quote = F)
         #print PPAs for models
         cat("\n###########    PPAs for MODELS    ###########\n")
@@ -218,9 +230,8 @@ summary.varselect <- function(output, topmodels = 5, ...)
         })
         indicators1 <- rbind(indicators1, indicators2)
         colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
-        var <- colnames(output[[1]])[-1]
-        if(length(grep(glob2rx("sigma*"), var)) > 0) var <- var[-grep(glob2rx("sigma*"), var)]
-        var <- var[-c(length(var))]
+        var <- colnames(indicators[[1]])
+        var <- sapply(strsplit(var, "_"), function(x) x[2])
         rownames(indicators1) <- c(var, paste("Chain", 1:nchains), "Mean", "SD")
         indicators1[indicators1 == "0"] <- ""
         print(indicators1, quote = F)
