@@ -17,7 +17,7 @@ source("analysisfunctions.R")
 #bwt.mcmc <- run.mcmc(bwt, "low")
 #bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "locrand", n.iter = 10000, nchains = 1)
 #bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "globrand", n.iter = 10000, nchains = 1)
-bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "fixed", n.iter = 100000)
+bwt.mcmc1 <- run.mcmc(bwt, "low", varselect = F, random = "fixed", niter = 100000)
 
 #test <- as.matrix(bwt.mcmc1[[1]])
 #test <- test[, c(2, 12)]
