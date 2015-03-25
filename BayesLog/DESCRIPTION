@@ -1,0 +1,15 @@
+Package: BayesLog
+Type: Package
+Title: Bayesian methods for inference and model selection 
+    using logistic regression models
+Version: 1.0
+Date: 2015-03-25
+Author: TJ McKinley
+Maintainer: TJ McKinley <t.mckinley@exeter.ac.uk>
+Description: Package uses MCMC methods for fitting logistic regression models in
+    a Bayesian framework. Uses reversible-jump MCMC to perform variable selection
+    and Bayesian model averaging.
+License: GPL (>= 2)
+Imports: Rcpp (>= 0.11.4)
+Depends: coda
+LinkingTo: Rcpp
