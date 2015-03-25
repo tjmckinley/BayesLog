@@ -56,6 +56,9 @@ bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = 
     cumfactindex <- c(0, cumsum(factindex)[-length(factindex)]) + 1
     varsorig <- dat$vars
     dat <- dat$data
+    
+    #remove missing values
+    dat <- dat[!is.na(apply(dat, 1, sum)), ]
 	
 	#convert data to matrix
 	dat <- as.matrix(dat)
