@@ -6,13 +6,14 @@
 using namespace Rcpp;
 
 // logisticMH
-NumericMatrix logisticMH(NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP factindexSEXP, SEXP cumfactindexSEXP, SEXP ini_parsSEXP, SEXP ini_sigmaSEXP, SEXP gen_initsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP nitertrainingSEXP, SEXP scaleSEXP, SEXP orignparsSEXP, SEXP varselectSEXP, SEXP ninitialSEXP, SEXP randomSEXP) {
+NumericMatrix logisticMH(NumericMatrix data, IntegerVector nsamples, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random);
+RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP nsamplesSEXP, SEXP factindexSEXP, SEXP cumfactindexSEXP, SEXP ini_parsSEXP, SEXP ini_sigmaSEXP, SEXP gen_initsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP nitertrainingSEXP, SEXP scaleSEXP, SEXP orignparsSEXP, SEXP varselectSEXP, SEXP ninitialSEXP, SEXP randomSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
         Rcpp::RNGScope __rngScope;
         Rcpp::traits::input_parameter< NumericMatrix >::type data(dataSEXP );
+        Rcpp::traits::input_parameter< IntegerVector >::type nsamples(nsamplesSEXP );
         Rcpp::traits::input_parameter< IntegerVector >::type factindex(factindexSEXP );
         Rcpp::traits::input_parameter< IntegerVector >::type cumfactindex(cumfactindexSEXP );
         Rcpp::traits::input_parameter< NumericVector >::type ini_pars(ini_parsSEXP );
@@ -26,7 +27,7 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< int >::type varselect(varselectSEXP );
         Rcpp::traits::input_parameter< int >::type ninitial(ninitialSEXP );
         Rcpp::traits::input_parameter< int >::type random(randomSEXP );
-        NumericMatrix __result = logisticMH(data, factindex, cumfactindex, ini_pars, ini_sigma, gen_inits, priors, niter, nitertraining, scale, orignpars, varselect, ninitial, random);
+        NumericMatrix __result = logisticMH(data, nsamples, factindex, cumfactindex, ini_pars, ini_sigma, gen_inits, priors, niter, nitertraining, scale, orignpars, varselect, ninitial, random);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

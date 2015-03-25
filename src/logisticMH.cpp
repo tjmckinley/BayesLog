@@ -6,9 +6,10 @@ using namespace Rcpp;
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random)
+NumericMatrix logisticMH (NumericMatrix data, IntegerVector nsamples, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
+    // 'nsamples' corresponds to aggregated counts for each row of 'data'
     // 'factindex' is a vector containing number of levels for each variable
     // 'cumfactindex' is a vector indexing start point for each variable
     //      (accounting for different numbers of levels)
@@ -34,6 +35,11 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
     int npars = ini_pars.size();
     int nregpars = npars - 1;
     IntegerVector indpars(npars);
+    
+    i = 0;
+    for(j = 0; j < nsamples.size(); j++) i += nsamples[j];
+    Rprintf("\nNumber of samples in data set = %d\n", i);
+    Rprintf("Number of unique samples in data set = %d\n", data.nrow());
     
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
@@ -112,7 +118,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         for(i = 0; i < npars; i++) if(pars(1, i) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
         
         //check the initial values produce a finite log-posterior
-        LL_curr = loglike(pars, indpars, data);
+        LL_curr = loglike(pars, indpars, data, nsamples);
         // calculate log-likelihood – log-prior
         acc_curr = LL_curr;
         //add prior for intercept
@@ -273,7 +279,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         nattempt[0]++;
         
         // calculate log-likelihood – log-prior
-        LL_prop = loglike(pars_prop, indpars, data);
+        LL_prop = loglike(pars_prop, indpars, data, nsamples);
         acc_prop = LL_prop;
         acc_curr = LL_curr;
         
@@ -313,7 +319,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                         nattempt[j]++;
                     }
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
@@ -361,7 +367,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     }
                     
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
@@ -453,7 +459,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
                     }
                     
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)

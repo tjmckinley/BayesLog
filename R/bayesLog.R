@@ -2,6 +2,7 @@
 #' @description Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
 #' @export
 #' @import coda Rcpp
+#' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
 #' @param response      Character containing name of response variable.
 #' @param gen_inits     Logical stating whether initial values are to be generated at random or
@@ -18,7 +19,7 @@
 #' @param random        Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
 #'                      effects, a global random effect or local random effects.
 #' @param nitertraining the number of iterations for the training run (if required)
-bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
+bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
 {
     #check inputs
     stopifnot(is.data.frame(dat), is.character(response), length(response) == 1)
@@ -44,12 +45,40 @@ bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = 
 	#check names don't have underscores
 	if(length(grep(glob2rx("*_*"), colnames(dat))) > 0) stop("Can't have variable names with underscores")
 	
+	# extract formula
+    form <- extractTerms(formula)
+    # extract random intercepts term if required
+    RE <- form[[2]]
+    form <- form[[1]]
+    mf <- model.frame(formula = form, data = dat, na.action = na.fail)
+    # check there are no columns called 'RE' or 'counts'
+    temp <- match(c("RE", "nsamples"), attr(mf, "names"))
+    if (length(temp[!is.na(temp)]) > 0) stop("Can't name variables 'RE' or 'nsamples'")
+    
+    # create vector for random intercepts if required
+    if (is.null(RE)) rand.int <- NA 
+    else
+    {
+        rand.int <- dat[, match(RE, colnames(dat)), drop = F]
+        for (j in 1:ncol(rand.int)) if (!is.factor(rand.int[, j])) stop("Random intercepts term is not a factor")
+        for (j in 1:ncol(rand.int)) rand.int[, j] <- as.numeric(rand.int[, j])
+    }
+    
+    # condense data into succinct form for model
+    dat <- dat[, match(attr(mf, "names"), colnames(dat))]
+    if (!is.null(RE)) dat$RE <- rand.int[, 1] #currently only handles one random intercept term
+    # now aggregate data
+    dat <- aggregate(rep(1, nrow(dat)), dat, table)
+    dat[, ncol(dat)] <- as.numeric(dat[, ncol(dat)])
+    nsamples <- dat[, ncol(dat)]
+    dat <- dat[, -ncol(dat)]
+    
 	#extract original number of variables
 	orignpars <- ncol(dat) - 1
 	
     #convert data frame into correct format for use
     #in Bayesian model
-    dat <- createLinear(dat, response)
+    dat <- createLinear(dat, colnames(dat)[1])
     
     #extract components necessary for MCMC
     factindex <- as.numeric(table(dat$factindex))
@@ -57,9 +86,6 @@ bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = 
     varsorig <- dat$vars
     dat <- dat$data
     
-    #remove missing values
-    dat <- dat[!is.na(apply(dat, 1, sum)), ]
-	
 	#convert data to matrix
 	dat <- as.matrix(dat)
 	
@@ -108,7 +134,7 @@ bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = 
 	for(j in 1:nchains)
 	{
         vars <- varsorig
-        model.sim[[j]] <- logisticMH(dat, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        model.sim[[j]] <- logisticMH(dat, nsamples, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
         if(random == 0)
         {
             model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]

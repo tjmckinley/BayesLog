@@ -4,11 +4,12 @@
 using namespace Rcpp;
 
 // function for calculating the log-likelihood
-double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data)
+double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, IntegerVector nsamples)
 {
     //'pars' is a vector of parameters (beta0, beta, sigma2)
     //'indpars' is vector of indicators
     //'data' is matrix of data with response in first column
+    //'nsamples' is vector of counts for each row of 'data'
     
     int i, j;
     double LL = 0, nu;
@@ -26,7 +27,7 @@ double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data)
         nu = exp(nu) / (1.0 + exp(nu));
         //calculate log-likelihood contribution
         nu = (data(i, 0) == 0 ? (1.0 - nu):nu);
-        LL += log(nu);
+        LL += nsamples[i] * log(nu);
     }
     return LL;
 }
