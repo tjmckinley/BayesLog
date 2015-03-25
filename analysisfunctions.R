@@ -91,7 +91,7 @@ run.mcmc <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
         if(random == 2)
         {
             colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", c("int", vars)), paste0("I_", c("int", vars)), "post")
-            model.sim[[j]] <- model.sim[[j]][, -c(2 * npars + 3)]
+            model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
         }
         if(!varselect) model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
         else
