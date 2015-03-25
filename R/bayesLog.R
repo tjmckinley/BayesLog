@@ -4,8 +4,11 @@
 #' @import coda Rcpp
 #' @param dat 		    Data frame containing data.
 #' @param response      Character containing name of response variable.
-#' @param inits         Vector of initial values for the regression parameters.
-#' @param inits_sigma   Vector of initial values for the regression SD hyperparameters.
+#' @param gen_inits     Logical stating whether initial values are to be generated at random or
+#'                      input by the user. If the latter then \code{inits} and \code{inits_sigma}
+#'                      must be supplied.
+#' @param inits         List containing vectors of initial values for the regression parameters.
+#' @param inits_sigma   List containing vectors of initial values for the regression SD hyperparameters.
 #' @param nchains       Number of chains to run.
 #' @param niter         Number of iterations to run per chain.
 #' @param scale         Mixing proportion for adapt proposal.
@@ -14,11 +17,13 @@
 #' @param priorvar      Prior variance for fixed effects (currently scalar).
 #' @param random        Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
 #'                      effects, a global random effect or local random effects.
-bayesLog <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = F, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
+#' @param nitertraining the number of iterations for the training run (if required)
+bayesLog <- function(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
 {
     #check inputs
     stopifnot(is.data.frame(dat), is.character(response), length(response) == 1)
-    stopifnot(is.vector(inits), is.vector(inits_sigma))
+    stopifnot(is.list(inits) | is.na(inits[1]), is.list(inits_sigma) | is.na(inits[1]))
+    stopifnot(all(sapply(inits, is.vector)) | gen_inits, all(sapply(inits, is.vector)) | gen_inits)
     stopifnot(is.numeric(nchains), length(nchains) == 1, is.numeric(niter), length(niter) == 1)
     stopifnot(is.numeric(scale), length(scale) == 1, scale > 0, scale < 1)
     stopifnot(is.logical(varselect), length(varselect) == 1)
@@ -59,10 +64,10 @@ bayesLog <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	npars <- ncol(dat) - 1
 	
 	#set random effect indicator
-	random <- ifelse(random == "fixed", 0, ifelse(random == "globrand", 1, 2))
+	random <- ifelse(random[1] == "fixed", 0, ifelse(random[1] == "globrand", 1, 2))
 	
 	#generate initial values
-	if(!is.list(inits))
+	if(gen_inits)
 	{
         gen_inits <- 1
         inits <- list(nchains)
@@ -133,5 +138,6 @@ bayesLog <- function(dat, response, inits = NA, inits_sigma = NA, nchains = 2, n
 	#return output
 	model.sim <- as.mcmc.list(model.sim)
 	model.sim <- list(model.sim = model.sim, varselect = varselect)
+	class(model.sim) <- "bayesLog"
 	model.sim
 }

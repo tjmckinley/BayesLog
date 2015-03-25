@@ -1,26 +1,46 @@
-#function to summarise MCMC output
-summary.varselect <- function(output, topmodels = 5, ...)
+#' Summary statistics for \code{bayesLog} objects
+#' 
+#' \code{summary} method for class \code{bayesLog}
+#' 
+#' Produce summary statistics for \code{\link{bayesLog}} objects.
+#' These are partly based on the \code{\link[coda]{summary.mcmc}} functions from the \code{coda}
+#' package, but also include posterior probabilities of association for a set of variables or models
+#' if variable selection was used. 
+#' 
+#' @param object a \code{bayesLog} object, usually as a result of a call to
+#' \code{\link{bayesLog}}.
+#' @param topmodels the number of models to print to the screen (ordered by 
+#' posterior probability of association in decreasing order).
+#' @param \dots additional arguments to be passed to \code{\link[coda]{summary.mcmc}}
+#' @author TJ McKinley
+#' @seealso \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
+#'
+#' @import coda
+#' @export
+
+summary.bayesLog <- function(object, topmodels = 5, ...)
 {
+    stopifnot(class(object) == "bayesLog")
     #extract relevant quantities from object
-    varselect <- output$varselect
-    output <- output$model.sim
+    varselect <- object$varselect
+    object <- object$model.sim
     
     #thin chains
-    output <- window(output, ...)
+    object <- window(object, ...)
     
     #now extract indicators
-    if(varselect == 0) print(summary(output))
+    if(varselect == 0) print(summary(object))
     else
     {
-        nchains <- length(output)
-        output <- lapply(output, as.matrix)
-        indicators <- lapply(output, function(x) x[, grep(glob2rx("I_*"), colnames(x)), drop = F])
-        output <- lapply(output, function(x) x[, -grep(glob2rx("I_*"), colnames(x)), drop = F])
-        output <- lapply(output, as.mcmc)
-        output <- as.mcmc.list(output)
+        nchains <- length(object)
+        object <- lapply(object, as.matrix)
+        indicators <- lapply(object, function(x) x[, grep(glob2rx("I_*"), colnames(x)), drop = F])
+        object <- lapply(object, function(x) x[, -grep(glob2rx("I_*"), colnames(x)), drop = F])
+        object <- lapply(object, as.mcmc)
+        object <- as.mcmc.list(object)
         #print posterior summaries
         cat("###########    POSTERIOR SUMMARIES    ###########\n")
-        print(summary(output))
+        print(summary(object))
         #print PPAs for variables
         cat("\n###########    PPAs for VARIABLES    ###########\n")
         PPAvar <- sapply(indicators, function(x) apply(x, 2, mean))

@@ -4,19 +4,23 @@
 \alias{bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
-bayesLog(dat, response, inits = NA, inits_sigma = NA, nchains = 2,
-  niter = 2e+05, scale = 0.05, varselect = F, ninitial = 10,
-  priorvar = 10000, random = c("fixed", "globrand", "locrand"),
-  nitertraining = NA)
+bayesLog(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA,
+  nchains = 2, niter = 2e+05, scale = 0.05, varselect = FALSE,
+  ninitial = 10, priorvar = 10000, random = c("fixed", "globrand",
+  "locrand"), nitertraining = NA)
 }
 \arguments{
 \item{dat}{Data frame containing data.}
 
 \item{response}{Character containing name of response variable.}
 
-\item{inits}{Vector of initial values for the regression parameters.}
+\item{gen_inits}{Logical stating whether initial values are to be generated at random or
+input by the user. If the latter then \code{inits} and \code{inits_sigma}
+must be supplied.}
 
-\item{inits_sigma}{Vector of initial values for the regression SD hyperparameters.}
+\item{inits}{List containing vectors of initial values for the regression parameters.}
+
+\item{inits_sigma}{List containing vectors of initial values for the regression SD hyperparameters.}
 
 \item{nchains}{Number of chains to run.}
 
@@ -32,6 +36,8 @@ bayesLog(dat, response, inits = NA, inits_sigma = NA, nchains = 2,
 
 \item{random}{Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
 effects, a global random effect or local random effects.}
+
+\item{nitertraining}{the number of iterations for the training run (if required)}
 }
 \description{
 Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
