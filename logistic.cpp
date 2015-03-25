@@ -246,7 +246,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         // calculate log-likelihood – log-prior
         acc_curr = LL_curr;
         //add prior for intercept
-        acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
+//        acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
         for(j = 0; j < npars; j++)
         {
@@ -717,7 +717,7 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector factindex, IntegerVe
         //calculate current unnormalised posterior
         acc_curr = LL_curr;
         //add prior for intercept
-        acc_curr += R::dnorm(pars(0, 0), priors(0, 0), sqrt(priors(0, 1)), 1);
+//        acc_curr += R::dnorm(pars(0, 0), priors(0, 0), sqrt(priors(0, 1)), 1);
         //add priors for regression parameters
         for(j = 0; j < npars; j++)
         {
