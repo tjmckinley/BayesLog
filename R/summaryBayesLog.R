@@ -22,7 +22,7 @@ summary.bayesLog <- function(object, topmodels = 5, ...)
 {
     stopifnot(class(object) == "bayesLog")
     #extract relevant quantities from object
-    varselect <- object$varselect
+    varselect <- ifelse(length(grep(glob2rx("I_*"), colnames(object$model.sim[[1]]))) > 0, TRUE, FALSE)
     object <- object$model.sim
     
     #thin chains

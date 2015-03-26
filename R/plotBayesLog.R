@@ -23,7 +23,7 @@
 plot.bayesLog <- function(x, cond = F, trace = T, density = T, ask = T, ...)
 {
     stopifnot(class(x) == "bayesLog")
-    if(cond == T & x$varselect == F) cond <- F
+    if(cond == T & length(grep(glob2rx("I_*"), colnames(x$model.sim[[1]]))) > 0) cond <- F
     
     if(cond)
     {
