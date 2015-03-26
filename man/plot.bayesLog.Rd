@@ -4,13 +4,14 @@
 \alias{plot.bayesLog}
 \title{Plots \code{bayesLog} objects}
 \usage{
-plot.bayesLog(x, cond = F, trace = T, density = T, ask = T, ...)
+\method{plot}{bayesLog}(x, cond = F, trace = T, density = T, ask = T,
+  ...)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
 
-\item{cond}{should the outputs should be subsetted conditional on
+\item{cond}{should the xs should be subsetted conditional on
 inclusion in the model at each iteration.}
 
 \item{trace}{plot trace of each variable.}

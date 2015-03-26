@@ -4,12 +4,14 @@
 \alias{bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
-bayesLog(dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA,
-  nchains = 2, niter = 2e+05, scale = 0.05, varselect = FALSE,
-  ninitial = 10, priorvar = 10000, random = c("fixed", "globrand",
-  "locrand"), nitertraining = NA)
+bayesLog(formula, dat, response, gen_inits = TRUE, inits = NA,
+  inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 2e+05,
+  scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000,
+  random = c("fixed", "globrand", "locrand"), nitertraining = NA)
 }
 \arguments{
+\item{formula}{Formula for linear regression}
+
 \item{dat}{Data frame containing data.}
 
 \item{response}{Character containing name of response variable.}
@@ -21,6 +23,8 @@ must be supplied.}
 \item{inits}{List containing vectors of initial values for the regression parameters.}
 
 \item{inits_sigma}{List containing vectors of initial values for the regression SD hyperparameters.}
+
+\item{inits_sigmarand}{Initial values for the random intercept SD hyperparameter.}
 
 \item{nchains}{Number of chains to run.}
 
