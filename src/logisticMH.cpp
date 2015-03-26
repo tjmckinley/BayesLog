@@ -144,7 +144,6 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector nsamples, IntegerVec
         }
         k++;
     }
-    if(k == 100 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
     
     //print initial values to screen
     Rprintf("\nInitial values:\n");
@@ -162,6 +161,8 @@ NumericMatrix logisticMH (NumericMatrix data, IntegerVector nsamples, IntegerVec
         for(j = 1; j < npars; j++) Rprintf("sigma[%d] = %f\n", j, pars(1, j));
     }
     Rprintf("\n");
+    
+    if(k == 100 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
     
     // set up adaptive proposal distribution
     double adaptscale_sing = pow(2.38, 2.0);
