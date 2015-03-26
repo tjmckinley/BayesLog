@@ -12,7 +12,8 @@
 #' inclusion in the model at each iteration.
 #' @param trace plot trace of each variable.
 #' @param density plot density of each variable.
-#' @param ask Prompt user before each page of plots
+#' @param ask prompt user before each page of plots
+#' @param randint plot random intercepts instead of other regression variables
 #' @param \dots additional arguments to be passed to \code{\link[coda]{plot.mcmc}} if \code{cond = FALSE}
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{plot.mcmc}}
@@ -20,10 +21,16 @@
 #' @import coda
 #' @export
 
-plot.bayesLog <- function(x, cond = F, trace = T, density = T, ask = T, ...)
+plot.bayesLog <- function(x, cond = F, trace = T, density = T, ask = T, randint = F, ...)
 {
     stopifnot(class(x) == "bayesLog")
     if(cond == T & length(grep(glob2rx("I_*"), colnames(x$model.sim[[1]]))) > 0) cond <- F
+    if(randint) cond <- F
+    if(randint & is.na(match("model.randint", names(x))))
+    {
+        print("'x' does not contain random intercept information, setting 'randint = F'")
+        randint <- F
+    }
     
     if(cond)
     {
@@ -88,5 +95,9 @@ plot.bayesLog <- function(x, cond = F, trace = T, density = T, ask = T, ...)
         par(mfrow = c(1, 1))
         return(cat(""))
     }
-    else plot(x[[1]], trace = trace, density = density, ask = ask, ...)
+    else
+    {
+        if(!randint) plot(x[[1]], trace = trace, density = density, ask = ask, ...)
+        else plot(x[[2]], trace = trace, density = density, ask = ask, ...)
+    }
 }

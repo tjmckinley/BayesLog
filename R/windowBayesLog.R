@@ -21,7 +21,15 @@
 window.bayesLog <- function(x, start = NA, end = NA, thin = NA, chains = NA, ...)
 {
     stopifnot(class(x) == "bayesLog")
-    y <- x
+    y <- list()
+    for(i in 1:length(x)) y[[i]] <- window.sing.bayesLog(x[i], start = start, end = end, thin = thin, chains = chains, ...)
+    names(y) <- names(x)
+    class(y) <- "bayesLog"
+    y
+}
+ 
+window.sing.bayesLog <- function(x, start = NA, end = NA, thin = NA, chains = NA, ...)
+{
     if (!is.na(chains)) {
         x <- x[[1]][chains]
     }
@@ -46,7 +54,5 @@ window.bayesLog <- function(x, start = NA, end = NA, thin = NA, chains = NA, ...
             else x <- window(x, start = start, end = end)
         }
     }
-    y[[1]] <- x
-    class(y) <- "bayesLog"
-    y
+    x
 } 

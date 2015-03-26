@@ -11,6 +11,7 @@
 #' \code{\link{bayesLog}}.
 #' @param topmodels the number of models to print to the screen (ordered by 
 #' posterior probability of association in decreasing order).
+#' @param randint summarise random intercepts instead of other regression variables
 #' @param \dots additional arguments to be passed to \code{\link[coda]{summary.mcmc}}
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
@@ -18,15 +19,22 @@
 #' @import coda
 #' @export
 
-summary.bayesLog <- function(object, topmodels = 5, ...)
+summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
 {
     stopifnot(class(object) == "bayesLog")
     #extract relevant quantities from object
     varselect <- ifelse(length(grep(glob2rx("I_*"), colnames(object$model.sim[[1]]))) > 0, TRUE, FALSE)
-    object <- object$model.sim
-    
-    #thin chains
-    object <- window(object, ...)
+    if(randint & is.na(match("model.randint", names(object))))
+    {
+        print("'x' does not contain random intercept information, setting 'randint = F'")
+        randint <- F
+    }
+    if(!randint) object <- object$model.sim
+    else
+    {
+        object <- object$model.randint
+        varselect <- F
+    }
     
     #now extract indicators
     if(varselect == 0) print(summary(object))

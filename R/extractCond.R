@@ -1,7 +1,7 @@
 #function to extract conditional runs from MCMC output
 extractCond <- function(output)
 {
-    x <- lapply(output[[1]], function(x)
+    x <- lapply(output$model.sim, function(x)
     {
         x <- as.matrix(x)
         vars <- colnames(x)
