@@ -230,9 +230,12 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     
 	#return output
 	model.sim <- as.mcmc.list(model.sim)
-	model.randint <- as.mcmc.list(model.randint)
 	model.sim <- list(model.sim = model.sim)
-	if(nrandint > 0) model.sim$model.randint <- model.randint
+	if(nrandint > 0)
+	{   
+	    model.randint <- as.mcmc.list(model.randint)
+	    model.sim$model.randint <- model.randint
+	}
 	class(model.sim) <- "bayesLog"
 	model.sim
 }
