@@ -1,7 +1,4 @@
-#include <Rcpp.h>
 #include "functions.h"
-
-using namespace Rcpp;
 
 // function for calculating the log-likelihood
 double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, IntegerVector nsamples, IntegerVector randint, NumericVector rand)

@@ -10,3 +10,6 @@ double loglike_randint (NumericMatrix pars, IntegerVector indpars, NumericMatrix
 
 //function to calculate posterior mean and variance recursively
 void calcMeanVar(int i, int ninitial, NumericVector *tempmn, NumericVector *tempvar, IntegerVector *tempcounts, NumericMatrix posterior, int postelement, int parelement, int indelement);
+
+// [[Rcpp::export]]
+List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum);

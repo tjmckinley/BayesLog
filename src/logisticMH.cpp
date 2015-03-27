@@ -1,11 +1,7 @@
-#include <Rcpp.h>
 #include "functions.h"
-
-using namespace Rcpp;
 
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
-// [[Rcpp::export]]
 List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
