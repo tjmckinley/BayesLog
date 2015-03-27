@@ -7,7 +7,8 @@
 bayesLog(formula, dat, response, gen_inits = TRUE, inits = NA,
   inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 2e+05,
   scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000,
-  random = c("fixed", "globrand", "locrand"), nitertraining = NA)
+  random = c("fixed", "globrand", "locrand"), nitertraining = NA,
+  nprintsum = 1000)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
@@ -42,6 +43,8 @@ must be supplied.}
 effects, a global random effect or local random effects.}
 
 \item{nitertraining}{the number of iterations for the training run (if required)}
+
+\item{nprintsum}{how often to print run time information to the screen}
 }
 \description{
 Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.

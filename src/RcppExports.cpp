@@ -6,8 +6,8 @@
 using namespace Rcpp;
 
 // logisticMH
-List logisticMH(NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP nsamplesSEXP, SEXP nrandintSEXP, SEXP randintSEXP, SEXP cumrandindexSEXP, SEXP factindexSEXP, SEXP cumfactindexSEXP, SEXP ini_parsSEXP, SEXP ini_sigmaSEXP, SEXP ini_sigmarandSEXP, SEXP gen_initsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP nitertrainingSEXP, SEXP scaleSEXP, SEXP orignparsSEXP, SEXP varselectSEXP, SEXP ninitialSEXP, SEXP randomSEXP) {
+List logisticMH(NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum);
+RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP nsamplesSEXP, SEXP nrandintSEXP, SEXP randintSEXP, SEXP cumrandindexSEXP, SEXP factindexSEXP, SEXP cumfactindexSEXP, SEXP ini_parsSEXP, SEXP ini_sigmaSEXP, SEXP ini_sigmarandSEXP, SEXP gen_initsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP nitertrainingSEXP, SEXP scaleSEXP, SEXP orignparsSEXP, SEXP varselectSEXP, SEXP ninitialSEXP, SEXP randomSEXP, SEXP nprintsumSEXP) {
 BEGIN_RCPP
     SEXP __sexp_result;
     {
@@ -31,7 +31,8 @@ BEGIN_RCPP
         Rcpp::traits::input_parameter< int >::type varselect(varselectSEXP );
         Rcpp::traits::input_parameter< int >::type ninitial(ninitialSEXP );
         Rcpp::traits::input_parameter< int >::type random(randomSEXP );
-        List __result = logisticMH(data, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, ini_pars, ini_sigma, ini_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, varselect, ninitial, random);
+        Rcpp::traits::input_parameter< int >::type nprintsum(nprintsumSEXP );
+        List __result = logisticMH(data, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, ini_pars, ini_sigma, ini_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, varselect, ninitial, random, nprintsum);
         PROTECT(__sexp_result = Rcpp::wrap(__result));
     }
     UNPROTECT(1);

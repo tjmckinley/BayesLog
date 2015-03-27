@@ -6,7 +6,7 @@ using namespace Rcpp;
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
 // [[Rcpp::export]]
-List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random)
+List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'nsamples' corresponds to aggregated counts for each row of 'data'
@@ -28,10 +28,11 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
     // 'scale' is mixing proportion for adaptive MCMC
     // 'orignpars' is number of variables (disregarding dummy variables)
     // 'varselect' is an indicator controlling whether variable selection is to be done
-    // 'ninitial' is the number of ietrations to run before starting to calculate the posterior
+    // 'ninitial' is the number of iterations to run before starting to calculate the posterior
     //  mean and variance for use in proposal steps
     // 'random' is an indicator corresponding to whether a "fixed" (0), 
     //      global "random" (1) or local "random" (2) effect required
+    // 'nprintsum' controls how often run time information is printed to the screen
     
     //initialise indexing variables
     int i, j, k, m;
@@ -49,6 +50,7 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
     Rprintf("\nNumber of samples in data set = %d\n", i);
     Rprintf("Number of unique samples in data set = %d\n", data.nrow());
     if(nrandint > 0) Rprintf("Number of random intercept terms = %d\n", nrandint);
+    Rprintf("Run time information printed to screen every %d iterations\n", nprintsum);
     
     Rprintf("\nNumber of iterations = %d\n", niter);
     Rprintf("Scale for adaptive proposal = %f\n", scale);
@@ -757,8 +759,8 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
             outputrand(i, nrandint) = 1;
         }   
         
-        if((i + 1) % 1000 == 0)
-        {            
+        if((i + 1) % nprintsum == 0)
+        {          
             // print some output to screen for book-keeping
             minnacc = (nattempt[0] > 0 ? (((double) nacc[0]) / ((double) nattempt[0])):0.0);
             maxnacc = minnacc;

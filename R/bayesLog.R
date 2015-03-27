@@ -20,7 +20,9 @@
 #' @param random        Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
 #'                      effects, a global random effect or local random effects.
 #' @param nitertraining the number of iterations for the training run (if required)
-bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
+#' @param nprintsum  how often to print run time information to the screen
+
+bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
 {
     #check inputs
     stopifnot(is.formula(formula))
@@ -40,6 +42,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     stopifnot(is.numeric(priorvar), length(priorvar) == 1)
     stopifnot(is.character(random), all(!is.na(match(random[1], c("fixed", "globrand", "locrand")))))
     stopifnot(is.numeric(nitertraining), length(nitertraining) == 1)
+    stopifnot(is.numeric(nprintsum), length(nprintsum) == 1)
     
 	#ensure response variable is in first row of data set
 	stopifnot(ncol(dat) >= 2)
@@ -167,7 +170,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	for(j in 1:nchains)
 	{
         vars <- varsorig
-        model.sim[[j]] <- logisticMH(dat, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], inits_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random)
+        model.sim[[j]] <- logisticMH(dat, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], inits_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random, nprintsum)
         model.randint[[j]] <- model.sim[[j]][[2]]
         model.sim[[j]] <- model.sim[[j]][[1]]
         if(nrandint == 0)
