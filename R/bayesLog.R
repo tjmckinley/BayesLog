@@ -23,15 +23,23 @@
 bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA)
 {
     #check inputs
-    stopifnot(is.data.frame(dat), is.character(response), length(response) == 1)
-    stopifnot(is.list(inits) | is.na(inits[1]), is.list(inits_sigma) | is.na(inits[1]))
-    stopifnot(all(sapply(inits, is.vector)) | gen_inits, all(sapply(inits, is.vector)) | gen_inits)
+    stopifnot(is.formula(formula))
+    stopifnot(is.data.frame(dat))
+    stopifnot(is.character(response), length(response) == 1)
+    stopifnot(is.logical(gen_inits))
+    stopifnot(is.list(inits) | is.na(inits[1]))
+    stopifnot(all(sapply(inits, is.vector)) | gen_inits)
+    stopifnot(is.list(inits_sigma) | is.na(inits[1]))
+    stopifnot(all(sapply(inits_sigma, is.vector)) | gen_inits)
     stopifnot((is.numeric(inits_sigmarand) & length(inits_sigmarand) == 1) | gen_inits)
-    stopifnot(is.numeric(nchains), length(nchains) == 1, is.numeric(niter), length(niter) == 1)
+    stopifnot(is.numeric(nchains), length(nchains) == 1)
+    stopifnot(is.numeric(niter), length(niter) == 1)
     stopifnot(is.numeric(scale), length(scale) == 1, scale > 0, scale < 1)
     stopifnot(is.logical(varselect), length(varselect) == 1)
-    stopifnot(is.numeric(ninitial), length(ninitial) == 1, is.numeric(priorvar), length(priorvar) == 1)
+    stopifnot(is.numeric(ninitial), length(ninitial) == 1)
+    stopifnot(is.numeric(priorvar), length(priorvar) == 1)
     stopifnot(is.character(random), all(!is.na(match(random[1], c("fixed", "globrand", "locrand")))))
+    stopifnot(is.numeric(nitertraining), length(nitertraining) == 1)
     
 	#ensure response variable is in first row of data set
 	stopifnot(ncol(dat) >= 2)

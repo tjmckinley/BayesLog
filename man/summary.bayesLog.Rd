@@ -4,7 +4,7 @@
 \alias{summary.bayesLog}
 \title{Summary statistics for \code{bayesLog} objects}
 \usage{
-\method{summary}{bayesLog}(object, topmodels = 5, ...)
+\method{summary}{bayesLog}(object, topmodels = 5, randint = F, ...)
 }
 \arguments{
 \item{object}{a \code{bayesLog} object, usually as a result of a call to
@@ -12,6 +12,8 @@
 
 \item{topmodels}{the number of models to print to the screen (ordered by
 posterior probability of association in decreasing order).}
+
+\item{randint}{summarise random intercepts instead of other regression variables}
 
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{summary.mcmc}}}
 }

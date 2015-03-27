@@ -5,7 +5,7 @@
 \title{Plots \code{bayesLog} objects}
 \usage{
 \method{plot}{bayesLog}(x, cond = F, trace = T, density = T, ask = T,
-  ...)
+  randint = F, ...)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
@@ -18,7 +18,9 @@ inclusion in the model at each iteration.}
 
 \item{density}{plot density of each variable.}
 
-\item{ask}{Prompt user before each page of plots}
+\item{ask}{prompt user before each page of plots}
+
+\item{randint}{plot random intercepts instead of other regression variables}
 
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{plot.mcmc}} if \code{cond = FALSE}}
 }
