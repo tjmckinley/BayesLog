@@ -10,6 +10,8 @@ Description: Package uses MCMC methods for fitting logistic regression models in
     a Bayesian framework. Uses reversible-jump MCMC to perform variable selection
     and Bayesian model averaging.
 License: GPL (>= 2)
-Imports: Rcpp (>= 0.11.4)
-Depends: coda
-LinkingTo: Rcpp
+Imports: Rcpp (>= 0.11.4),
+         coda,
+         RcppArmadillo
+LinkingTo: Rcpp,
+           RcppArmadillo

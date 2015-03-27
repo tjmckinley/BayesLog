@@ -1,7 +1,7 @@
 #include "functions.h"
 
 // function for calculating the log-likelihood
-double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, IntegerVector nsamples, IntegerVector randint, NumericVector rand)
+double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand)
 {
     //'pars' is a vector of parameters (beta0, beta, sigma2)
     //'indpars' is vector of indicators
@@ -11,15 +11,15 @@ double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, I
     //'rand' is vector of random intercept parameters
     
     int i, j;
-    double LL = 0, nu;
+    double LL = 0.0, nu;
     
-    for(i = 0; i < data.nrow(); i++)
+    for(i = 0; i < data.n_rows; i++)
     {
         //initialise linear component
         nu = pars(0, 0);
         //add random intercept term
         nu += rand[randint[i]];
-        for(j = 1; j < data.ncol(); j++)
+        for(j = 1; j < data.n_cols; j++)
         {
             //add contribution for each covariate
             nu += pars(0, j) * indpars[j] * data(i, j);
@@ -34,7 +34,7 @@ double loglike (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, I
 }
 
 // function for calculating the log-likelihood based on change in a single random intercept term
-double loglike_randint (NumericMatrix pars, IntegerVector indpars, NumericMatrix data, IntegerVector nsamples, IntegerVector randint, NumericVector rand, NumericVector rand_prop, IntegerVector cumrandindex, int nrand)
+double loglike_randint (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand, arma::vec rand_prop, arma::ivec cumrandindex, int nrand)
 {
     //'pars' is a vector of parameters (beta0, beta, sigma2)
     //'indpars' is vector of indicators
@@ -54,7 +54,7 @@ double loglike_randint (NumericMatrix pars, IntegerVector indpars, NumericMatrix
     {
         //initialise linear component
         nu = pars(0, 0);
-        for(j = 1; j < data.ncol(); j++)
+        for(j = 1; j < data.n_cols; j++)
         {
             //add contribution for each covariate
             nu += pars(0, j) * indpars[j] * data(i, j);

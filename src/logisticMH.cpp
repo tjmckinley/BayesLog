@@ -2,12 +2,12 @@
 
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
-List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, IntegerVector randint, IntegerVector cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
+List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'nsamples' corresponds to aggregated counts for each row of 'data'
     // 'nrandint' corresponds to number of random intercept terms
-    // 'randint' is vector of random intercpet indicators
+    // 'randint' is vector of random intercept indicators
     // 'cumrandindex' is a vector indexing start point for each random intercept
     //      (accounting for different numbers of levels)
     // 'factindex' is a vector containing number of levels for each variable
@@ -36,7 +36,8 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
     // calculate number of parameters
     int npars = ini_pars.size();
     int nregpars = npars - 1;
-    IntegerVector indpars(npars);
+    arma::vec indpars(npars);
+    indpars.zeros();
     
     //extract number of random intercept terms
     int npracrandint = (nrandint > 0 ? nrandint:1);
@@ -44,7 +45,7 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
     i = 0;
     for(j = 0; j < nsamples.size(); j++) i += nsamples[j];
     Rprintf("\nNumber of samples in data set = %d\n", i);
-    Rprintf("Number of unique samples in data set = %d\n", data.nrow());
+    Rprintf("Number of unique samples in data set = %d\n", data.n_rows);
     if(nrandint > 0) Rprintf("Number of random intercept terms = %d\n", nrandint);
     Rprintf("Run time information printed to screen every %d iterations\n", nprintsum);
     
@@ -72,12 +73,16 @@ List logisticMH (NumericMatrix data, IntegerVector nsamples, int nrandint, Integ
     NumericMatrix outputrand((nrandint > 0 ? niter:1), npracrandint + 1);
     
     // initialise chain and set up vector to hold proposals
-    NumericMatrix pars(2, npars);
-    NumericMatrix pars_prop(2, npars);
+    arma::mat pars(2, npars);
+    pars.zeros();
+    arma::mat pars_prop(2, npars);
+    pars_prop.zeros();
     
     // initialise chain and set up vector to hold proposals for random intercepts
-    NumericVector rand(npracrandint);
-    NumericVector rand_prop(npracrandint);
+    arma::vec rand(npracrandint);
+    rand.zeros();
+    arma::vec rand_prop(npracrandint);
+    rand_prop.zeros();
     
     //declare variables
     double LL_curr, LL_prop, acc_curr, acc_prop, acc, sigmafull, sigmafull_prop;
