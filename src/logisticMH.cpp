@@ -34,7 +34,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     int i, j, k, m;
     
     //set number of threads
-    omp_set_num_threads(12);
+    int ncores = omp_get_num_procs();
+    omp_set_num_threads(ncores);
     
     // calculate number of parameters
     int npars = ini_pars.size();
