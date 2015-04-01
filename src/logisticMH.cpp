@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
-List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, NumericVector ini_pars, NumericVector ini_sigma, double ini_sigmarand, int gen_inits, NumericMatrix priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
+List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, arma::vec ini_pars, arma::vec ini_sigma, double ini_sigmarand, int gen_inits, arma::mat priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'nsamples' corresponds to aggregated counts for each row of 'data'
@@ -67,10 +67,12 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     if(random == 1) noutput = 2 * npars + 2;
     if(random == 2) noutput = 3 * npars + 1;
     if(nrandint > 0) noutput++;
-    NumericMatrix output(niter, noutput);
+    arma::mat output(niter, noutput);
+    output.zeros();
     
     // set up output vector to record chain for random intercept terms
-    NumericMatrix outputrand((nrandint > 0 ? niter:1), npracrandint + 1);
+    arma::mat outputrand((nrandint > 0 ? niter:2), npracrandint + 1);
+    outputrand.zeros();
     
     // initialise chain and set up vector to hold proposals
     arma::mat pars(2, npars);
@@ -201,19 +203,32 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     double adaptscale_sing = pow(2.38, 2.0);
     
     //set up vectors for adaptive proposals
-    NumericVector tempmn(npars);
-    NumericVector tempsigmamn(npars);
-    NumericVector tempvar(npars, 0.1 * 0.1);
-    NumericVector tempsigmavar(npars, 0.1 * 0.1);
-    IntegerVector tempcounts(npars);
-    IntegerVector tempsigmacounts(npars);
-    NumericVector temprandmn(npracrandint);
-    NumericVector temprandvar(npracrandint);
-    IntegerVector temprandcounts(npracrandint);
-    NumericVector tempsigmarandmn(npracrandint);
-    NumericVector tempsigmarandvar(npracrandint);
-    IntegerVector tempsigmarandcounts(npracrandint);
+    arma::vec tempmn(npars);
+    arma::vec tempsigmamn(npars);
+    arma::vec tempvar(npars);
+    arma::vec tempsigmavar(npars);
+    arma::ivec tempcounts(npars);
+    arma::ivec tempsigmacounts(npars);
+    arma::vec temprandmn(npracrandint);
+    arma::vec temprandvar(npracrandint);
+    arma::ivec temprandcounts(npracrandint);
+    arma::vec tempsigmarandmn(npracrandint);
+    arma::vec tempsigmarandvar(npracrandint);
+    arma::ivec tempsigmarandcounts(npracrandint);
     double temp = 0.0;
+    
+    tempmn.zeros();
+    tempsigmamn.zeros();
+    tempvar.fill(0.1 * 0.1);
+    tempsigmavar.fill(0.1 * 0.1);
+    tempcounts.zeros();
+    tempsigmacounts.zeros();
+    temprandmn.zeros();
+    temprandvar.fill(0.1 * 0.1);
+    temprandcounts.zeros();
+    tempsigmarandmn.zeros();
+    tempsigmarandvar.fill(0.1 * 0.1);
+    tempsigmarandcounts.zeros();
     
 //    //print to screen as check
 //    for(i = 0; i < npars; i++)
@@ -240,16 +255,28 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
 //    }
     
     //set up vectors to record acceptance rates
-    IntegerVector nacc(npars);
-    IntegerVector nattempt(npars);
-    IntegerVector nacc_sigma(npars);
-    IntegerVector nattempt_sigma(npars);
-    IntegerVector nacc_rand(npracrandint);
-    IntegerVector nattempt_rand(npracrandint);
-    IntegerVector nacc_add(npars);
-    IntegerVector nattempt_add(npars);
-    IntegerVector nacc_del(npars);
-    IntegerVector nattempt_del(npars);
+    arma::ivec nacc(npars);
+    arma::ivec nattempt(npars);
+    arma::ivec nacc_sigma(npars);
+    arma::ivec nattempt_sigma(npars);
+    arma::ivec nacc_rand(npracrandint);
+    arma::ivec nattempt_rand(npracrandint);
+    arma::ivec nacc_add(npars);
+    arma::ivec nattempt_add(npars);
+    arma::ivec nacc_del(npars);
+    arma::ivec nattempt_del(npars);
+    
+    nacc.zeros();
+    nattempt.zeros();
+    nacc_sigma.zeros();
+    nattempt_sigma.zeros();
+    nacc_rand.zeros();
+    nattempt_rand.zeros();
+    nacc_add.zeros();
+    nattempt_add.zeros();
+    nacc_del.zeros();
+    nattempt_del.zeros();
+    
     int naccsigmafull = 0, nattemptsigmafull = 0;
     int naccsigmarand = 0, nattemptsigmarand = 0;
     double tempacc;
@@ -890,7 +917,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 {
                     //rescale variances if necessary
                     if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing;
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, npars + j);
+                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + j);
                     if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
                  }
             }
@@ -900,12 +927,12 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 {   
                     //rescale variances if necessary
                     if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing; 
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, npars + 1 + j);
+                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + 1 + j);
                     if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
                 }
                 if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] / adaptscale_sing;
                 //next line links to intercept for inclusion criteria in order to update sigma (fudge)
-                calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, output, 0, 0, npars + 1);
+                calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, 0, 0, npars + 1);
                 if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] * adaptscale_sing;
             }
             if(random == 2)
@@ -918,8 +945,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                         tempvar[j] = tempvar[j] / adaptscale_sing;
                         tempsigmavar[j] = tempsigmavar[j] / adaptscale_sing; 
                     }
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, output, j, j, 2 * npars + j);
-                    calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, output, j + npars, j, 2 * npars + j);
+                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, 2 * npars + j);
+                    calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, j + npars, j, 2 * npars + j);
                     if(tempcounts[j] >= 2)
                     {
                         tempvar[j] = tempvar[j] * adaptscale_sing;
@@ -933,7 +960,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 {
                     //rescale variances if necessary
                     if(temprandcounts[j] >= 2) temprandvar[j] = temprandvar[j] / adaptscale_sing;
-                    calcMeanVar(i, ninitial, &temprandmn, &temprandvar, &temprandcounts, outputrand, j, j, nrandint);
+                    calcMeanVar(i, ninitial, &temprandmn, &temprandvar, &temprandcounts, &outputrand, j, j, nrandint);
                     if(temprandcounts[j] >= 2) temprandvar[j] = temprandvar[j] * adaptscale_sing;
                 }
                 //rescale variances if necessary
@@ -941,7 +968,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 if(random == 0) j = npars;
                 if(random == 1) j = npars + 1;
                 if(random == 2) j = 2 * npars + 1;
-                calcMeanVar(i, ninitial, &tempsigmarandmn, &tempsigmarandvar, &tempsigmarandcounts, output, noutput - 1, 0, j);
+                calcMeanVar(i, ninitial, &tempsigmarandmn, &tempsigmarandvar, &tempsigmarandcounts, &output, noutput - 1, 0, j);
                 if(tempsigmarandcounts[0] >= 2) tempsigmarandvar[0] = tempsigmarandvar[0] * adaptscale_sing;
             }
         }
