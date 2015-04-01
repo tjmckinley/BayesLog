@@ -1,10 +1,10 @@
 #include <RcppArmadillo.h>
-// [[Rcpp::depends(RcppArmadillo)]]
+#include <omp.h>
 
 using namespace Rcpp;
 
 // function for calculating the log-likelihood
-double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand);
+double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand, arma::vec logL);
 
 // function for calculating the log-likelihood based on change in a single random intercept term
 double loglike_randint (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand, arma::vec rand_prop, arma::ivec cumrandindex, int nrand);

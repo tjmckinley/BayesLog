@@ -1,7 +1,7 @@
 #include "functions.h"
 
 // function for calculating the log-likelihood
-double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand)
+double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsamples, arma::ivec randint, arma::vec rand, arma::vec logL)
 {
     //'pars' is a vector of parameters (beta0, beta, sigma2)
     //'indpars' is vector of indicators
@@ -9,17 +9,22 @@ double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsa
     //'nsamples' is vector of counts for each row of 'data'
     //'randint' is random intercept indictator
     //'rand' is vector of random intercept parameters
+    //'logL' is a vector to record log-likelihood components
     
     int i, j;
     double LL = 0.0, nu;
     
-    for(i = 0; i < data.n_rows; i++)
+    int nrow = data.n_rows;
+    int ncol = data.n_cols;
+    
+    #pragma omp parallel for private(i, nu, j) schedule(static)
+    for(i = 0; i < nrow; i++)
     {
         //initialise linear component
         nu = pars(0, 0);
         //add random intercept term
         nu += rand[randint[i]];
-        for(j = 1; j < data.n_cols; j++)
+        for(j = 1; j < ncol; j++)
         {
             //add contribution for each covariate
             nu += pars(0, j) * indpars[j] * data(i, j);
@@ -28,8 +33,10 @@ double loglike (arma::mat pars, arma::vec indpars, arma::mat data, arma::vec nsa
         nu = exp(nu) / (1.0 + exp(nu));
         //calculate log-likelihood contribution
         nu = (data(i, 0) == 0 ? (1.0 - nu):nu);
-        LL += nsamples[i] * log(nu);
+        logL[i] = nsamples[i] * log(nu);
     }
+    #pragma omp parallel for reduction (+:LL)
+    for(i = 0; i < nrow; i++) LL += logL[i];
     return LL;
 }
 

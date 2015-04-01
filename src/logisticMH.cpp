@@ -33,11 +33,17 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     //initialise indexing variables
     int i, j, k, m;
     
+    //set number of threads
+    omp_set_num_threads(12);
+    
     // calculate number of parameters
     int npars = ini_pars.size();
     int nregpars = npars - 1;
     arma::vec indpars(npars);
     indpars.zeros();
+    
+    //set terms for parallelising code
+    arma::vec logL(data.n_rows);
     
     //extract number of random intercept terms
     int npracrandint = (nrandint > 0 ? nrandint:1);
@@ -145,7 +151,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
         for(i = 0; i < npars; i++) if(pars(1, i) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
         
         //check the initial values produce a finite log-posterior
-        LL_curr = loglike(pars, indpars, data, nsamples, randint, rand);
+        LL_curr = loglike(pars, indpars, data, nsamples, randint, rand, logL);
         // calculate log-likelihood – log-prior
         acc_curr = LL_curr;
         //add prior for intercept
@@ -361,7 +367,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
         nattempt[0]++;
         
         // calculate log-likelihood – log-prior
-        LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand);
+        LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand, logL);
         acc_prop = LL_prop;
         acc_curr = LL_curr;
         
@@ -401,7 +407,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                         nattempt[j]++;
                     }
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand, logL);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
@@ -449,7 +455,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                     }
                     
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand, logL);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
@@ -541,7 +547,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                     }
                     
                     // calculate log-likelihood – log-prior
-                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand);
+                    LL_prop = loglike(pars_prop, indpars, data, nsamples, randint, rand, logL);
                     acc_prop = LL_prop;
                     acc_curr = LL_curr;
                     for(j = cumfactindex[k]; j < (cumfactindex[k] + factindex[k]); j++)
