@@ -24,6 +24,12 @@
 
 bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
 {
+    # extract formula
+    form <- extractTerms(formula)
+    # extract random intercepts term if required
+    RE <- form[[2]]
+    form <- form[[1]]
+    
     #check inputs
     stopifnot(is.data.frame(dat))
     stopifnot(is.character(response) & length(response) == 1)
@@ -32,7 +38,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     stopifnot(all(sapply(inits, is.vector)) | gen_inits)
     stopifnot(is.list(inits_sigma) | is.na(inits[1]))
     stopifnot(all(sapply(inits_sigma, is.vector)) | gen_inits)
-    stopifnot((is.numeric(inits_sigmarand) & length(inits_sigmarand) == 1) | gen_inits)
+    stopifnot((is.numeric(inits_sigmarand) & length(inits_sigmarand) == 1 ) | gen_inits | is.null(RE))
     stopifnot(is.numeric(nchains) & length(nchains) == 1)
     stopifnot(is.numeric(niter) & length(niter) == 1)
     stopifnot(is.numeric(scale) & length(scale) == 1, scale > 0, scale < 1)
@@ -58,11 +64,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	#check names don't have underscores
 	if(length(grep(glob2rx("*_*"), colnames(dat))) > 0) stop("Can't have variable names with underscores")
 	
-	# extract formula
-    form <- extractTerms(formula)
-    # extract random intercepts term if required
-    RE <- form[[2]]
-    form <- form[[1]]
+	#check data names
     mf <- model.frame(formula = form, data = dat, na.action = na.fail)
     # check there are no columns called 'RE' or 'counts'
     temp <- match(c("RE", "nsamples"), attr(mf, "names"))
@@ -145,15 +147,17 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	        if(!all(sapply(inits, length) == ncol(dat))) stop("Wrong number of initial values")
 	        if(random == 2)
 	        {
-	            if(!all(sapply(inits_sigma, length) == ncol(dat))) stop("Wrong number of initial sigma values")
+	            if(!all(sapply(inits_sigma, length) == (ncol(dat) - 1))) stop("Wrong number of initial sigma values")
 	        }
 	        if(random == 1)
 	        {
 	            if(!all(sapply(inits_sigma, length) == 1)) stop("Wrong number of initial sigma values")
 	        }
 	        gen_inits <- 0
+	        #add dummy initial sigma for intercept
+	        inits_sigma <- lapply(inits_sigma, function(x) c(1, x))
 	    }
-	    if(is.na(inits_sigmarand)) stop("Initial value for random intercept SD hyperparameter must be specified")
+	    if(is.na(inits_sigmarand) & !is.null(RE)) stop("Initial value for random intercept SD hyperparameter must be specified")
 	}
 	
 	#set priors
