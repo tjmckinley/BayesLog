@@ -93,7 +93,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     //generate or read in initial values
     k = 0;
     int ind = 0;
-    while(k < 100 && ind == 0)
+    while(k < 1000 && ind == 0)
     {
         //generate initial values if required
         if(gen_inits == 1)
@@ -173,7 +173,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
         if(R_finite(acc_curr) != 0) ind = 1;
         else
         {
-            if(gen_inits == 0) k = 99;
+            if(gen_inits == 0) k = 999;
         }
         k++;
     }
@@ -197,7 +197,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     if(nrandint > 0) Rprintf("\nInitial random intercept SD: %f\n", sigmarand);
     Rprintf("\n");
     
-    if(k == 100 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
+    if(k == 1000 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
     
     // set up adaptive proposal distribution
     double adaptscale_sing = pow(2.38, 2.0);
