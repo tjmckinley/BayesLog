@@ -42,6 +42,6 @@ if variable selection was used.
 TJ McKinley
 }
 \seealso{
-\code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
+\code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
 }
 

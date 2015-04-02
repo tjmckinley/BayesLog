@@ -14,7 +14,7 @@
 #' @param randint summarise random intercepts instead of other regression variables
 #' @param \dots additional arguments to be passed to \code{\link[coda]{summary.mcmc}}
 #' @author TJ McKinley
-#' @seealso \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
+#' @seealso \code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
 #'
 #' @return A \code{summary.bayesLog} object; essentially a list
 #' including a subset of elements:
