@@ -173,7 +173,6 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = N
 	
 	#set priors
 	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), rep(c(0, 20), times = 2)), ncol = 2, byrow = T)
-	print(priors)
 	
 	#set training run if required
 	if(is.na(nitertraining) || !varselect) nitertraining <- 0
