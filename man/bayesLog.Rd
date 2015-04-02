@@ -2,6 +2,7 @@
 % Please edit documentation in R/bayesLog.R
 \name{bayesLog}
 \alias{bayesLog}
+\alias{print.bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
 bayesLog(formula, dat, response, gen_inits = TRUE, inits = NA,

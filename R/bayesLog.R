@@ -1,7 +1,10 @@
 #' @title Fits Bayesian logistic regression model
+#'
 #' @description Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
+#'
 #' @export
 #' @import coda Rcpp
+#'
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
 #' @param response      Character containing name of response variable.
@@ -21,6 +24,7 @@
 #'                      effects, a global random effect or local random effects.
 #' @param nitertraining the number of iterations for the training run (if required)
 #' @param nprintsum  how often to print run time information to the screen
+#'
 #' @return An object of class \code{bayesLog}, which is basically a list
 #' including a subset of elements:
 #' \itemize{
@@ -30,6 +34,8 @@
 #' \item{data:}{ a \code{data.frame} containing the data used to fit the model.}
 #' \item{formula:}{ a \code{formula} used to define the model.}
 #' }
+#'
+#' @aliases print.bayesLog
 
 bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
 {
@@ -258,4 +264,12 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	model.sim$formula <- formula
 	class(model.sim) <- "bayesLog"
 	model.sim
+}
+
+#print generic
+print.bayesLog <- function(x, ...)
+{
+    stopifnot(class(x) == "bayesLog")
+    
+    print(summary(x))
 }
