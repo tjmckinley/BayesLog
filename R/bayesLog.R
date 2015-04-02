@@ -100,7 +100,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     
     #if random intercept variable being used, then sort data and extract index vectors
     dat <- dat[sort.list(dat$RE), ]
-    randint <- dat$RE
+    randint <- dat$RE - 1
     dat <- dat[, -match("RE", colnames(dat))]
     randindex <- table(randint)
     cumrandindex <- c(0, cumsum(randindex))
