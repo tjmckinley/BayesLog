@@ -257,6 +257,7 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = N
 }
 
 #print generic
+#' @export
 print.bayesLog <- function(x, ...)
 {
     stopifnot(class(x) == "bayesLog")

@@ -2,6 +2,8 @@
 
 S3method(plot,bayesLog)
 S3method(predict,bayesLog)
+S3method(print,bayesLog)
+S3method(print,summary.bayesLog)
 S3method(summary,bayesLog)
 export(bayesLog)
 export(window.bayesLog)

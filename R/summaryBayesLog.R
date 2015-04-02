@@ -124,6 +124,7 @@ summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
 }
 
 #generic print function for summary objects
+#' @export
 print.summary.bayesLog <- function(x, ...)
 {
     stopifnot(class(x) == "summary.bayesLog")
