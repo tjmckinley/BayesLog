@@ -149,7 +149,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             for(i = 0; i < npars; i++) indpars[i] = 1;
         }
         
-        for(i = 0; i < npars; i++) if(pars(1, i) < 0.0) stop("\nSD hyperparameter %d not positive\n", i);
+        for(i = 0; i < npars; i++) if(pars(1, i) < 0.0) stop("\nSD hyperparameter not positive\n");
         
         //check the initial values produce a finite log-posterior
         LL_curr = loglike(pars, indpars, data, nsamples, randint, rand, logL);
