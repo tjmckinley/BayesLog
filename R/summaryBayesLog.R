@@ -16,8 +16,19 @@
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
 #'
+#' @return A \code{summary.bayesLog} object; essentially a list
+#' including a subset of elements:
+#' \itemize{
+#' \item{summary:}{ a \code{summary.mcmc.list} object.}
+#' \item{PPAvar:}{ an \code{matrix} containing posterior probabilities of association
+#' for each variable (if variable selection used).}
+#' \item{PPAmod:}{ an \code{matrix} containing posterior probabilities of association
+#' for each 'top' model (if variable selection used).}
+#' }
 #' @import coda
 #' @export
+#'
+#' @aliases print.summary.bayesLog
 
 summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
 {
@@ -36,8 +47,16 @@ summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
         varselect <- F
     }
     
+    #set up output
+    output <- list()
+    
     #now extract indicators
-    if(varselect == 0) print(summary(object))
+    if(varselect == 0)
+    {
+        output$summary <- summary(object)
+        class(output) <- "summary.bayesLog"
+        return(output)
+    }
     else
     {
         nchains <- length(object)
@@ -46,26 +65,27 @@ summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
         object <- lapply(object, function(x) x[, -grep(glob2rx("I_*"), colnames(x)), drop = F])
         object <- lapply(object, as.mcmc)
         object <- as.mcmc.list(object)
-        #print posterior summaries
-        cat("###########    POSTERIOR SUMMARIES    ###########\n")
-        print(summary(object))
-        #print PPAs for variables
-        cat("\n###########    PPAs for VARIABLES    ###########\n")
+        
+        #extract posterior summaries
+        output$summary <- summary(object)
+        
+        #extract PPAs for variables
         PPAvar <- sapply(indicators, function(x) apply(x, 2, mean))
         if(!is.matrix(PPAvar)) PPAvar <- matrix(PPAvar, nrow = 1)
         rownames(PPAvar) <- sapply(strsplit(colnames(indicators[[1]]), "_"), function(x) x[2])
+        
         PPAvar <- t(apply(PPAvar, 1, function(x)
         {
             y <- x
             x <- x[!is.na(x)]
             x <- c(y, mean(x), sd(x))
             x <- signif(x, digits = 2)
-            x <- c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
+#            x <- c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
         }))
         colnames(PPAvar) <- c(paste("Chain", 1:(ncol(PPAvar) - 2)), "Mean", "SD")
-        print(t(PPAvar), quote = F)
-        #print PPAs for models
-        cat("\n###########    PPAs for MODELS    ###########\n")
+        output$PPAvar <- t(PPAvar)
+        
+        #extract PPAs for models
         indicators1 <- lapply(indicators, function(x) apply(x, 1, function(y) paste(y, collapse = ".")))
         indicators2 <- lapply(indicators1, table)
         indicators2 <- lapply(indicators2, function(x) x / sum(x))
@@ -88,13 +108,43 @@ summary.bayesLog <- function(object, topmodels = 5, randint = F, ...)
         indicators2 <- apply(indicators2, 1, function(x)
         {
             x <- signif(x, digits = 2)
-            c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
+#            c(as.character(x[-length(x)]), paste0("(", x[length(x)], ")"))
         })
-        indicators1 <- rbind(indicators1, indicators2)
+        indicators1 <- rbind(t(apply(indicators1, 1, as.numeric)), indicators2)
         colnames(indicators1) <- paste0("M", 1:ncol(indicators1))
         var <- colnames(indicators[[1]])
         var <- sapply(strsplit(var, "_"), function(x) x[2])
         rownames(indicators1) <- c(var, paste("Chain", 1:nchains), "Mean", "SD")
+#        indicators1[indicators1 == "0"] <- ""
+#        print(indicators1, quote = F)
+        output$PPAmod <- indicators1
+        class(output) <- "summary.bayesLog"
+        return(output)
+    }
+}
+
+#generic print function for summary objects
+print.summary.bayesLog <- function(x, ...)
+{
+    stopifnot(class(x) == "summary.bayesLog")
+    
+    #print posterior summaries
+    cat("###########    POSTERIOR SUMMARIES    ###########\n")
+    print(x$summary)
+    
+    #print PPAs for variables
+    if(length(which(names(x) == "PPAvar")) > 0)
+    {
+        cat("\n###########    PPAs for VARIABLES    ###########\n\n")
+        print(x$PPAvar, quote = F)
+    }
+    
+    #print PPAs for models
+    if(length(which(names(x) == "PPAmod")) > 0)
+    {
+        cat("\n###########    PPAs for MODELS    ###########\n\n")
+        indicators1 <- t(apply(x$PPAmod, 1, as.character))
+        colnames(indicators1) <- colnames(x$PPAmod)
         indicators1[indicators1 == "0"] <- ""
         print(indicators1, quote = F)
     }
