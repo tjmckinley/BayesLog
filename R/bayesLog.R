@@ -28,6 +28,7 @@
 #' \item{model.randint:}{ an \code{mcmc.list} containing the posterior samples for the random
 #' intercepts terms (only present if random intercepts used).}
 #' \item{data:}{ an \code{data.frame} containing the data used to fit the model.}
+#' \item{formula:}{ a \code{formula} used to define the model.}
 #' }
 
 bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
@@ -254,6 +255,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	    model.sim$model.randint <- model.randint
 	}
 	model.sim$data <- origdat
+	model.sim$formula <- formula
 	class(model.sim) <- "bayesLog"
 	model.sim
 }
