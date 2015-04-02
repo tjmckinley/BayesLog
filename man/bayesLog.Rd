@@ -53,7 +53,7 @@ including a subset of elements:
 \item{model.sim:}{ an \code{mcmc.list} containing the posterior samples.}
 \item{model.randint:}{ an \code{mcmc.list} containing the posterior samples for the random
 intercepts terms (only present if random intercepts used).}
-\item{data:}{ an \code{data.frame} containing the data used to fit the model.}
+\item{data:}{ a \code{data.frame} containing the data used to fit the model.}
 \item{formula:}{ a \code{formula} used to define the model.}
 }
 }
