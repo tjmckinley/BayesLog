@@ -89,8 +89,13 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
         randintvars <- randintvars[[1]]
         #currently only handles one random intercept term
         if(ncol(randint) > 1) print("CURRENTLY ONLY HANDLES A SINGLE RANDOM INTERCEPT VARIABLE")
+        origdat <- dat
     }
-    else dat$RE <- rep(1, nrow(dat))
+    else
+    {
+        origdat <- dat
+        dat$RE <- rep(1, nrow(dat))
+    }
     
     # now aggregate data to speed code up
     dat <- aggregate(rep(1, nrow(dat)), dat, table)
@@ -240,6 +245,7 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
 	    model.randint <- as.mcmc.list(model.randint)
 	    model.sim$model.randint <- model.randint
 	}
+	model.sim$data <- origdat
 	class(model.sim) <- "bayesLog"
 	model.sim
 }

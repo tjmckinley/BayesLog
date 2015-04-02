@@ -22,8 +22,9 @@ window.bayesLog <- function(x, start = NA, end = NA, thin = NA, chains = NA, ...
 {
     stopifnot(class(x) == "bayesLog")
     y <- list()
-    for(i in 1:length(x)) y[[i]] <- window.sing.bayesLog(x[i], start = start, end = end, thin = thin, chains = chains, ...)
-    names(y) <- names(x)
+    for(i in 1:(length(x) - 1)) y[[i]] <- window.sing.bayesLog(x[i], start = start, end = end, thin = thin, chains = chains, ...)
+    names(y) <- names(x)[-match("data", names(x))]
+    y$data <- x$data
     class(y) <- "bayesLog"
     y
 }
