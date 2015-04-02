@@ -7,7 +7,6 @@
 #'
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
-#' @param response      Character containing name of response variable.
 #' @param gen_inits     Logical stating whether initial values are to be generated at random or
 #'                      input by the user. If the latter then \code{inits} and \code{inits_sigma}
 #'                      must be supplied.
@@ -37,7 +36,7 @@
 #'
 #' @aliases print.bayesLog
 
-bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
+bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
 {
     # extract formula
     form <- extractTerms(formula)
@@ -47,7 +46,6 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     
     #check inputs
     stopifnot(is.data.frame(dat))
-    stopifnot(is.character(response) & length(response) == 1)
     stopifnot(is.logical(gen_inits) & length(gen_inits) == 1)
     stopifnot(is.list(inits) | is.na(inits[1]))
     stopifnot(all(sapply(inits, is.vector)) | gen_inits)
@@ -65,22 +63,15 @@ bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits
     stopifnot(is.numeric(nitertraining) | is.na(nitertraining))
     stopifnot(is.numeric(nprintsum) & length(nprintsum) == 1)
     
-	#ensure response variable is in first row of data set
-	stopifnot(ncol(dat) >= 2)
-	respind <- which(response == colnames(dat))
-	stopifnot(length(respind) > 0)
-	if(respind != 1) dat <- cbind(dat[, respind], dat[, -respind])
-	
 	#check data
-	stopifnot(is.factor(dat[, 1]))
-	stopifnot(length(levels(dat[, 1])) == 2)
-	for(j in 2:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
+	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
 	
 	#check names don't have underscores
 	if(length(grep(glob2rx("*_*"), colnames(dat))) > 0) stop("Can't have variable names with underscores")
 	
 	#check data names
     mf <- model.frame(formula = form, data = dat, na.action = na.fail)
+	stopifnot(length(table(dat[, 1])) == 2)
     # check there are no columns called 'RE' or 'counts'
     temp <- match(c("RE", "nsamples"), attr(mf, "names"))
     if (length(temp[!is.na(temp)]) > 0) stop("Can't name variables 'RE' or 'nsamples'")

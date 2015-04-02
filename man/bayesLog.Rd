@@ -5,9 +5,9 @@
 \alias{print.bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
-bayesLog(formula, dat, response, gen_inits = TRUE, inits = NA,
-  inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 2e+05,
-  scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000,
+bayesLog(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA,
+  inits_sigmarand = NA, nchains = 2, niter = 2e+05, scale = 0.05,
+  varselect = FALSE, ninitial = 10, priorvar = 10000,
   random = c("fixed", "globrand", "locrand"), nitertraining = NA,
   nprintsum = 1000)
 }
@@ -15,8 +15,6 @@ bayesLog(formula, dat, response, gen_inits = TRUE, inits = NA,
 \item{formula}{Formula for linear regression}
 
 \item{dat}{Data frame containing data.}
-
-\item{response}{Character containing name of response variable.}
 
 \item{gen_inits}{Logical stating whether initial values are to be generated at random or
 input by the user. If the latter then \code{inits} and \code{inits_sigma}
