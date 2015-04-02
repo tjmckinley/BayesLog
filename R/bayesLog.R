@@ -21,6 +21,14 @@
 #'                      effects, a global random effect or local random effects.
 #' @param nitertraining the number of iterations for the training run (if required)
 #' @param nprintsum  how often to print run time information to the screen
+#' @return An object of class \code{bayesLog}, which is basically a list
+#' including a subset of elements:
+#' \itemize{
+#' \item{model.sim:}{ an \code{mcmc.list} containing the posterior samples.}
+#' \item{model.randint:}{ an \code{mcmc.list} containing the posterior samples for the random
+#' intercepts terms (only present if random intercepts used).}
+#' \item{data:}{ an \code{data.frame} containing the data used to fit the model.}
+#' }
 
 bayesLog <- function(formula, dat, response, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
 {

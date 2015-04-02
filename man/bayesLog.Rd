@@ -46,6 +46,16 @@ effects, a global random effect or local random effects.}
 
 \item{nprintsum}{how often to print run time information to the screen}
 }
+\value{
+An object of class \code{bayesLog}, which is basically a list
+including a subset of elements:
+\itemize{
+\item{model.sim:}{ an \code{mcmc.list} containing the posterior samples.}
+\item{model.randint:}{ an \code{mcmc.list} containing the posterior samples for the random
+intercepts terms (only present if random intercepts used).}
+\item{data:}{ an \code{data.frame} containing the data used to fit the model.}
+}
+}
 \description{
 Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
 }
