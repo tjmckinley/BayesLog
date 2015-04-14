@@ -4,7 +4,7 @@
 \alias{plot.bayesLog}
 \title{Plots \code{bayesLog} objects}
 \usage{
-\method{plot}{bayesLog}(x, cond = F, trace = T, density = T, ask = T,
+plot.bayesLog(x, cond = F, trace = T, density = T, ask = T,
   randint = F, ...)
 }
 \arguments{
