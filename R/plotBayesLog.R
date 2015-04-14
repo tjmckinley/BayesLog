@@ -24,7 +24,7 @@
 plot.bayesLog <- function(x, cond = F, trace = T, density = T, ask = T, randint = F, ...)
 {
     stopifnot(class(x) == "bayesLog")
-    if(cond == T & length(grep(glob2rx("I_*"), colnames(x$model.sim[[1]]))) > 0) cond <- F
+    if(cond == T & length(grep(glob2rx("I_*"), colnames(x$model.sim[[1]]))) == 0) cond <- F
     if(randint) cond <- F
     if(randint & is.na(match("model.randint", names(x))))
     {
