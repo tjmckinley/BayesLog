@@ -7,9 +7,9 @@
 \usage{
 bayesLog(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA,
   inits_sigmarand = NA, nchains = 2, niter = 2e+05, scale = 0.05,
-  varselect = FALSE, ninitial = 10, priorvar = 10000,
-  random = c("fixed", "globrand", "locrand"), nitertraining = NA,
-  nprintsum = 1000)
+  varselect = FALSE, nadapt = 100, priorvar = 10000, random = c("fixed",
+  "globrand", "locrand"), nitertraining = NA, nprintsum = 1000,
+  maxscale = 2, niterdim = 1000)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
@@ -34,7 +34,7 @@ must be supplied.}
 
 \item{varselect}{Logical stating whether variable selection is to be used.}
 
-\item{ninitial}{Number of iterations before adaptive proposal kicks in.}
+\item{nadapt}{Number of iterations between each adaptive proposal update.}
 
 \item{priorvar}{Prior variance for fixed effects (currently scalar).}
 
@@ -44,6 +44,10 @@ effects, a global random effect or local random effects.}
 \item{nitertraining}{the number of iterations for the training run (if required)}
 
 \item{nprintsum}{how often to print run time information to the screen}
+
+\item{maxscale}{the maximum scaling of the adaptive proposal variance at each update}
+
+\item{niterdim}{the iteration at which the diminishing adaptation component kicks in}
 }
 \value{
 An object of class \code{bayesLog}, which is basically a list

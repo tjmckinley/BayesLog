@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting the logistic variable selection model
 
-List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, arma::vec ini_pars, arma::vec ini_sigma, double ini_sigmarand, int gen_inits, arma::mat priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum)
+List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, arma::vec ini_pars, arma::vec ini_sigma, double ini_sigmarand, int gen_inits, arma::mat priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int nadapt, int random, int nprintsum, double maxscale, double niterdim)
 {
     // 'data' is a matrix of data with the first column equal to the response variable
     // 'nsamples' corresponds to aggregated counts for each row of 'data'
@@ -24,11 +24,13 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     // 'scale' is mixing proportion for adaptive MCMC
     // 'orignpars' is number of variables (disregarding dummy variables)
     // 'varselect' is an indicator controlling whether variable selection is to be done
-    // 'ninitial' is the number of iterations to run before starting to calculate the posterior
+    // 'nadapt' is the number of iterations to run between updates of the adaptive proposal
     //  mean and variance for use in proposal steps
     // 'random' is an indicator corresponding to whether a "fixed" (0), 
     //      global "random" (1) or local "random" (2) effect required
     // 'nprintsum' controls how often run time information is printed to the screen
+    // 'maxscale' is the maximum scaling of the adaptive proposal variance at each update
+    // 'niterdim' is the iteration at which the diminishing adaptation component kicks in
     
     //initialise indexing variables
     int i, j, k, m;
@@ -60,7 +62,9 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     Rprintf("Scale for adaptive proposal = %f\n", scale);
     Rprintf("Number of regression parameters (excluding intercept) = %d\n", nregpars);
     Rprintf("Variable selection (1/0): %d\n", varselect);
-    Rprintf("Number of initial iterations before adaptive proposal starts: %d\n", ninitial);
+    Rprintf("Adapt every %d iterations\n", nadapt);
+    Rprintf("Max scale for adapting = %f\n", maxscale);
+    Rprintf("%d iterations before diminishing adaptation kicks in\n", (int) niterdim);
     if(nitertraining > 0) Rprintf("Length of training run = %d\n", nitertraining);
     
     if(random == 0) Rprintf("\nFIXED SD components used\n");
@@ -206,35 +210,39 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     
     if(k == 1000 && R_finite(acc_curr) == 0) stop("\nInitial values produce non-finite log-likelihood");
     
-    // set up adaptive proposal distribution
-    double adaptscale_sing = pow(2.38, 2.0);
-    
     //set up vectors for adaptive proposals
     arma::vec tempmn(npars);
     arma::vec tempsigmamn(npars);
     arma::vec tempvar(npars);
     arma::vec tempsigmavar(npars);
+    arma::vec tempsd(npars);
+    arma::vec tempsigmasd(npars);
     arma::ivec tempcounts(npars);
     arma::ivec tempsigmacounts(npars);
     arma::vec temprandmn(npracrandint);
     arma::vec temprandvar(npracrandint);
+    arma::vec temprandsd(npracrandint);
     arma::ivec temprandcounts(npracrandint);
     arma::vec tempsigmarandmn(npracrandint);
     arma::vec tempsigmarandvar(npracrandint);
+    arma::vec tempsigmarandsd(npracrandint);
     arma::ivec tempsigmarandcounts(npracrandint);
-    double temp = 0.0;
     
     tempmn.zeros();
     tempsigmamn.zeros();
     tempvar.fill(0.1 * 0.1);
     tempsigmavar.fill(0.1 * 0.1);
+    tempsd.fill(0.1);
+    tempsigmasd.fill(0.1);
     tempcounts.zeros();
     tempsigmacounts.zeros();
     temprandmn.zeros();
     temprandvar.fill(0.1 * 0.1);
+    temprandsd.fill(0.1);
     temprandcounts.zeros();
     tempsigmarandmn.zeros();
     tempsigmarandvar.fill(0.1 * 0.1);
+    tempsigmarandsd.fill(0.1);
     tempsigmarandcounts.zeros();
     
 //    //print to screen as check
@@ -284,8 +292,24 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     nacc_del.zeros();
     nattempt_del.zeros();
     
+    arma::ivec nacc1(npars);
+    arma::ivec nattempt1(npars);
+    arma::ivec nacc_sigma1(npars);
+    arma::ivec nattempt_sigma1(npars);
+    arma::ivec nacc_rand1(npracrandint);
+    arma::ivec nattempt_rand1(npracrandint);
+    
+    nacc1.zeros();
+    nattempt1.zeros();
+    nacc_sigma1.zeros();
+    nattempt_sigma1.zeros();
+    nacc_rand1.zeros();
+    nattempt_rand1.zeros();
+    
     int naccsigmafull = 0, nattemptsigmafull = 0;
     int naccsigmarand = 0, nattemptsigmarand = 0;
+    int naccsigmafull1 = 0, nattemptsigmafull1 = 0;
+    int naccsigmarand1 = 0, nattemptsigmarand1 = 0;
     double tempacc;
     double minnacc, maxnacc;
     double minnacc_add, maxnacc_add;
@@ -316,6 +340,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                     tempsigmamn[j] = 0.0;
                     tempvar[j] = 0.1 * 0.1;
                     tempsigmavar[j] = 0.1 * 0.1;
+                    tempsd[j] = 0.1;
+                    tempsigmasd[j] = 0.1;
                     tempcounts[j] = 0;
                     tempsigmacounts[j] = 0;
                     
@@ -336,8 +362,10 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 {
                     temprandmn[j] = 0.0;
                     temprandvar[j] = 0.1 * 0.1;
+                    temprandsd[j] = 0.1;
                     tempsigmarandmn[j] = 0.0;
                     tempsigmarandvar[j] = 0.1 * 0.1;
+                    tempsigmarandsd[j] = 0.1;
                     
                     nacc_rand[j] = 0;
                     nattempt_rand[j] = 0;
@@ -366,7 +394,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
         
         // propose new value for intercept
         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, 0) = rnorm(1, pars(0, 0), 0.1)[0];
-        else pars_prop(0, 0) = rnorm(1, pars(0, 0), sqrt(tempvar[0]))[0];
+        else pars_prop(0, 0) = rnorm(1, pars(0, 0), tempsd[0])[0];
         nattempt[0]++;
         
         // calculate log-likelihood – log-prior
@@ -406,7 +434,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                     {
                         // propose new value for intercept
                         if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(0, j) = rnorm(1, pars(0, j), 0.1)[0];
-                        else pars_prop(0, j) = rnorm(1, pars(0, j), sqrt(tempvar[j]))[0];
+                        else pars_prop(0, j) = rnorm(1, pars(0, j), tempsd[j])[0];
                         nattempt[j]++;
                     }
                     // calculate log-likelihood – log-prior
@@ -473,9 +501,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                         acc_curr -= R::dnorm(pars(0, j), priors(j, 0), pars(1, j), 1);
                         if(random == 2)
                         {
-                            temp = (tempcounts[j] < 2 ? sqrt(tempsigmavar[j]):(sqrt(tempsigmavar[j]) / adaptscale_sing));
-                            acc_curr -= R::dnorm(pars(1, j), tempsigmamn[j], temp, 1);
-                            acc_curr += log(R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0));
+                            acc_curr -= R::dnorm(pars(1, j), tempsigmamn[j], sqrt(tempsigmavar[j]), 1);
+                            acc_curr += log(R::pnorm(priors(npars, 1), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0));
                         }
                     }
                     acc = acc_prop - acc_curr;
@@ -530,11 +557,11 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                             while(pars_prop(1, j) > priors(npars, 1))
                             {
                                 pars_prop(1, j) = runif(1, priors(npars, 0), priors(npars, 1))[0];
-                                temp = (tempcounts[j] < 2 ? sqrt(tempsigmavar[j]):(sqrt(tempsigmavar[j]) / adaptscale_sing));
+                                
                                 //set numerator
-                                acc_prop = R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0);
-                                acc_prop -= R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0);
-                                acc_prop = R::dnorm(pars_prop(1, j), tempsigmamn[j], temp, 1) - log(acc_prop);
+                                acc_prop = R::pnorm(priors(npars, 1), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0);
+                                acc_prop -= R::pnorm(priors(npars, 0), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0);
+                                acc_prop = R::dnorm(pars_prop(1, j), tempsigmamn[j], sqrt(tempsigmavar[j]), 1) - log(acc_prop);
                                 //set denominator
                                 acc_curr = priors(npars, 1) - priors(npars, 0);
                                 acc_curr = (acc_curr + 1.0) / acc_curr;
@@ -565,8 +592,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                         acc_prop -= R::dnorm(pars_prop(0, j), priors(j, 0), pars_prop(1, j), 1);
                         if(random == 2)
                         {
-                            acc_prop -= R::dnorm(pars_prop(1, j), tempsigmamn[j], temp, 1);
-                            acc_prop += log(R::pnorm(priors(npars, 1), tempsigmamn[j], temp, 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], temp, 1, 0));
+                            acc_prop -= R::dnorm(pars_prop(1, j), tempsigmamn[j], sqrt(tempsigmavar[j]), 1);
+                            acc_prop += log(R::pnorm(priors(npars, 1), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0) - R::pnorm(priors(npars, 0), tempsigmamn[j], sqrt(tempsigmavar[j]), 1, 0));
                         }
                     }
                     acc = acc_prop - acc_curr;
@@ -609,7 +636,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
         {
             //now propose update for SD hyperparameter
             if(runif(1, 0.0, 1.0)[0] < scale) sigmafull_prop = rnorm(1, sigmafull, 0.1)[0];
-            else sigmafull_prop = rnorm(1, sigmafull, sqrt(tempsigmavar[0]))[0];
+            else sigmafull_prop = rnorm(1, sigmafull, tempsigmasd[0])[0];
             nattemptsigmafull++;
             
             if(sigmafull_prop > priors(npars, 0) && sigmafull_prop < priors(npars, 1))
@@ -651,7 +678,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             {
                 //now propose update for SD hyperparameter
                 if(runif(1, 0.0, 1.0)[0] < scale) pars_prop(1, j) = rnorm(1, pars(1, j), 0.1)[0];
-                else pars_prop(1, j) = rnorm(1, pars(1, j), sqrt(tempsigmavar[j]))[0];
+                else pars_prop(1, j) = rnorm(1, pars(1, j), tempsigmasd[j])[0];
                 nattempt_sigma[j]++;
                 
                 if(pars_prop(1, j) > priors(npars, 0) && pars_prop(1, j) < priors(npars, 1))
@@ -688,7 +715,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             {
                 //now propose update for SD hyperparameter
                 if(runif(1, 0.0, 1.0)[0] < scale) rand_prop[j] = rnorm(1, rand[j], 0.1)[0];
-                else rand_prop[j] = rnorm(1, rand[j], sqrt(temprandvar[j]))[0];
+                else rand_prop[j] = rnorm(1, rand[j], temprandsd[j])[0];
                 nattempt_rand[j]++;
                 
                 //calculate change in log-likelihood
@@ -712,7 +739,7 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             
             //now update random intercepts hyperparameter
             if(runif(1, 0.0, 1.0)[0] < scale) sigmarand_prop = rnorm(1, sigmarand, 0.1)[0];
-            else sigmarand_prop = rnorm(1, sigmarand, sqrt(tempsigmarandvar[0]))[0];
+            else sigmarand_prop = rnorm(1, sigmarand, tempsigmarandsd[0])[0];
             nattemptsigmarand++;
             
             if(sigmarand_prop > priors(npars + 1, 0) && sigmarand_prop < priors(npars + 1, 1))
@@ -794,7 +821,43 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             output(i, noutput - 1) = sigmarand;
             for(j = 0; j < nrandint; j++) outputrand(i, j) = rand[j];
             outputrand(i, nrandint) = 1;
-        }   
+        } 
+        
+        // record posterior mean and variances for use in proposals
+        if ((i + 1) % nadapt == 0)
+        {
+            if(random == 0)
+            {
+                for(j = 0; j < npars; j++) tempsd[j] = adapt_scale(nacc[j] - nacc1[j], nadapt, 0.44, tempsd[j], (double) i + 1, maxscale, niterdim);
+            }
+            if(random == 1)
+            {
+                for(j = 0; j < npars; j++) tempsd[j] = adapt_scale(nacc[j] - nacc1[j], nadapt, 0.44, tempsd[j], (double) i + 1, maxscale, niterdim);
+                tempsigmasd[0] = adapt_scale(naccsigmafull - naccsigmafull1, nadapt, 0.44, tempsigmasd[0], (double) i + 1, maxscale, niterdim);
+            }
+            if(random == 2)
+            {
+                for(j = 0; j < npars; j++)
+                {
+                    tempsd[j] = adapt_scale(nacc[j] - nacc1[j], nadapt, 0.44, tempsd[j], (double) i + 1, maxscale, niterdim);
+                    tempsigmasd[j] = adapt_scale(nacc_sigma[j] - nacc_sigma1[j], nadapt, 0.44, tempsigmasd[j], (double) i + 1, maxscale, niterdim);
+                }
+            }
+            if(nrandint > 0)
+            {
+                for(j = 0; j < nrandint; j++) temprandsd[j] = adapt_scale(nacc_rand[j] - nacc_rand1[j], nadapt, 0.44, temprandsd[j], (double) i + 1, maxscale, niterdim);
+                tempsigmarandsd[0] = adapt_scale(naccsigmarand - naccsigmarand1, nadapt, 0.44, tempsigmarandsd[0], (double) i + 1, maxscale, niterdim);
+            }
+            //update counts
+            for(j = 0; j < npars; j++) nacc1[j] = nacc[j];
+            if(random == 1) naccsigmafull1 = naccsigmafull;
+            if(random == 2) for(j = 0; j < npars; j++) nacc_sigma1[j] = nacc_sigma[j];
+            if(nrandint > 0)
+            {
+                for(j = 0; j < nrandint; j++) nacc_rand1[j] = nacc_rand[j];
+                naccsigmarand1 = naccsigmarand;
+            }
+        }  
         
         if((i + 1) % nprintsum == 0)
         {          
@@ -915,70 +978,54 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
             nattemptsigmafull = 0;
             naccsigmarand = 0;
             nattemptsigmarand = 0;
+                            
+            for(j = 0; j < npars; j++)
+            {
+                nacc1[j] = 0;
+                nattempt1[j] = 0;
+                nacc_sigma1[j] = 0;
+                nattempt_sigma1[j] = 0;
+            }
+            for(j = 0; j < npracrandint; j++)
+            {   
+                nacc_rand1[j] = 0;
+                nattempt_rand1[j] = 0;
+            }
+            naccsigmafull1 = 0;
+            nattemptsigmafull1 = 0;
+            naccsigmarand1 = 0;
+            nattemptsigmarand1 = 0;
         }
         
         // record posterior mean and variances for use in proposals
-        if ((i + 1) >= ninitial)
+        if ((i + 1) >= nadapt)
         {
             if(random == 0)
             {
-                for(j = 0; j < npars; j++)
-                {
-                    //rescale variances if necessary
-                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing;
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + j);
-                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
-                 }
+                for(j = 0; j < npars; j++) calcMeanVar(i, nadapt, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + j);
             }
             if(random == 1)
             {
-                for(j = 0; j < npars; j++)
-                {   
-                    //rescale variances if necessary
-                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] / adaptscale_sing; 
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + 1 + j);
-                    if(tempcounts[j] >= 2) tempvar[j] = tempvar[j] * adaptscale_sing;
-                }
-                if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] / adaptscale_sing;
+                for(j = 0; j < npars; j++) calcMeanVar(i, nadapt, &tempmn, &tempvar, &tempcounts, &output, j, j, npars + 1 + j);
                 //next line links to intercept for inclusion criteria in order to update sigma (fudge)
-                calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, 0, 0, npars + 1);
-                if((i + 1) > ninitial) tempsigmavar[0] = tempsigmavar[0] * adaptscale_sing;
+                calcMeanVar(i, nadapt, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, 0, 0, npars + 1);
             }
             if(random == 2)
             {
                 for(j = 0; j < npars; j++)
                 {
-                    //rescale variances if necessary
-                    if(tempcounts[j] >= 2)
-                    {
-                        tempvar[j] = tempvar[j] / adaptscale_sing;
-                        tempsigmavar[j] = tempsigmavar[j] / adaptscale_sing; 
-                    }
-                    calcMeanVar(i, ninitial, &tempmn, &tempvar, &tempcounts, &output, j, j, 2 * npars + j);
-                    calcMeanVar(i, ninitial, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, j + npars, j, 2 * npars + j);
-                    if(tempcounts[j] >= 2)
-                    {
-                        tempvar[j] = tempvar[j] * adaptscale_sing;
-                        tempsigmavar[j] = tempsigmavar[j] * adaptscale_sing; 
-                    } 
+                    calcMeanVar(i, nadapt, &tempmn, &tempvar, &tempcounts, &output, j, j, 2 * npars + j);
+                    calcMeanVar(i, nadapt, &tempsigmamn, &tempsigmavar, &tempsigmacounts, &output, j + npars, j, 2 * npars + j);
                 }
             }
             if(nrandint > 0)
             {
-                for(j = 0; j < nrandint; j++)
-                {
-                    //rescale variances if necessary
-                    if(temprandcounts[j] >= 2) temprandvar[j] = temprandvar[j] / adaptscale_sing;
-                    calcMeanVar(i, ninitial, &temprandmn, &temprandvar, &temprandcounts, &outputrand, j, j, nrandint);
-                    if(temprandcounts[j] >= 2) temprandvar[j] = temprandvar[j] * adaptscale_sing;
-                }
+                for(j = 0; j < nrandint; j++) calcMeanVar(i, nadapt, &temprandmn, &temprandvar, &temprandcounts, &outputrand, j, j, nrandint);
                 //rescale variances if necessary
-                if(tempsigmarandcounts[0] >= 2) tempsigmarandvar[0] = tempsigmarandvar[0] / adaptscale_sing;
                 if(random == 0) j = npars;
                 if(random == 1) j = npars + 1;
                 if(random == 2) j = 2 * npars + 1;
-                calcMeanVar(i, ninitial, &tempsigmarandmn, &tempsigmarandvar, &tempsigmarandcounts, &output, noutput - 1, 0, j);
-                if(tempsigmarandcounts[0] >= 2) tempsigmarandvar[0] = tempsigmarandvar[0] * adaptscale_sing;
+                calcMeanVar(i, nadapt, &tempsigmarandmn, &tempsigmarandvar, &tempsigmarandcounts, &output, noutput - 1, 0, j);
             }
         }
     }
@@ -987,46 +1034,19 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
     Rprintf("TEST MEANS\n");
     if(random == 2) 
     {
-        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j] / adaptscale_sing), tempcounts[j]);
-        for(j = 0; j < npars; j++) Rprintf("tempsigmamn[%d] = %f tempsigmavar[%d] = %f counts = %d\n", j, tempsigmamn[j], j, sqrt(tempsigmavar[j] / adaptscale_sing), tempcounts[j]);
+        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempvar[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j]), tempcounts[j]);
+        for(j = 0; j < npars; j++) Rprintf("tempsigmamn[%d] = %f tempsigmavar[%d] = %f counts = %d\n", j, tempsigmamn[j], j, sqrt(tempsigmavar[j]), tempcounts[j]);
         if(nrandint > 0)
         {
-            Rprintf("tempsigmarandmn[%d] = %f tempsigmarandvar[%d] = %f counts = %d\n", j, tempsigmarandmn[0], 0, sqrt(tempsigmarandvar[0] / adaptscale_sing), tempsigmarandcounts[j]);
-            for(j = 0; j < nrandint; j++) Rprintf("temprandmn[%d] = %f temprandvar[%d] = %f counts = %d\n", j, temprandmn[j], j, sqrt(temprandvar[j] / adaptscale_sing), temprandcounts[j]);
+            Rprintf("tempsigmarandmn[%d] = %f tempsigmarandvar[%d] = %f counts = %d\n", j, tempsigmarandmn[0], 0, sqrt(tempsigmarandvar[0]), tempsigmarandcounts[j]);
+            for(j = 0; j < nrandint; j++) Rprintf("temprandmn[%d] = %f temprandvar[%d] = %f counts = %d\n", j, temprandmn[j], j, sqrt(temprandvar[j]), temprandcounts[j]);
         }
     }
     else
     {
-        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j] / adaptscale_sing), tempcounts[j]);
-        if(random == 1) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", npars, tempmn[npars], npars, sqrt(tempvar[npars] / adaptscale_sing), tempcounts[npars]);
+        for(j = 0; j < npars; j++) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", j, tempmn[j], j, sqrt(tempvar[j]), tempcounts[j]);
+        if(random == 1) Rprintf("tempmn[%d] = %f tempsigma[%d] = %f counts = %d\n", npars, tempmn[npars], npars, sqrt(tempvar[npars]), tempcounts[npars]);
     }
-
-//    //print to screen as check
-//    for(i = 0; i < npars; i++)
-//    {
-//        Rprintf("Covariance %d\n", i);
-//        for(j = 0; j < 2; j++)
-//        {
-//            for(k = 0; k < 2; k++) Rprintf("%f\t", tempcovini(j, k, i));
-//            Rprintf("\n");
-//        }
-//        Rprintf("\n");
-//    }
-    
-    //print to screen as check
-//    if(random == 2)
-//    {
-//        for(i = 0; i < npars; i++)
-//        {
-//            Rprintf("Covariance (slice) %d\n", i);
-//            for(j = 0; j < 2; j++)
-//            {
-//                for(k = 0; k < 2; k++) Rprintf("%f\t", tempcov.slice(i)(j, k) / adaptscale);
-//                Rprintf("\n");
-//            }
-//            Rprintf("\n");
-//        }
-//    }
 
     List ret;
     ret["output"] = output;

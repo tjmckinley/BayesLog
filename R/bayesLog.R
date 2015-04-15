@@ -17,12 +17,14 @@
 #' @param niter         Number of iterations to run per chain.
 #' @param scale         Mixing proportion for adapt proposal.
 #' @param varselect     Logical stating whether variable selection is to be used.
-#' @param ninitial      Number of iterations before adaptive proposal kicks in.
+#' @param nadapt        Number of iterations between each adaptive proposal update.
 #' @param priorvar      Prior variance for fixed effects (currently scalar).
 #' @param random        Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
 #'                      effects, a global random effect or local random effects.
 #' @param nitertraining the number of iterations for the training run (if required)
-#' @param nprintsum  how often to print run time information to the screen
+#' @param nprintsum     how often to print run time information to the screen
+#' @param maxscale      the maximum scaling of the adaptive proposal variance at each update
+#' @param niterdim      the iteration at which the diminishing adaptation component kicks in
 #'
 #' @return An object of class \code{bayesLog}, which is basically a list
 #' including a subset of elements:
@@ -36,7 +38,7 @@
 #'
 #' @aliases print.bayesLog
 
-bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, ninitial = 10, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000)
+bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, nadapt = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000, maxscale = 2, niterdim = 1000)
 {
     # extract formula
     form <- extractTerms(formula)
@@ -56,12 +58,17 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = N
     stopifnot(is.numeric(niter) & length(niter) == 1)
     stopifnot(is.numeric(scale) & length(scale) == 1, scale > 0, scale < 1)
     stopifnot(is.logical(varselect) & length(varselect) == 1)
-    stopifnot(is.numeric(ninitial) & length(ninitial) == 1)
+    stopifnot(is.numeric(nadapt) & length(nadapt) == 1)
     stopifnot(is.numeric(priorvar) & length(priorvar) == 1)
     stopifnot(is.character(random) & all(!is.na(match(random[1], c("fixed", "globrand", "locrand")))))
     stopifnot(length(nitertraining) == 1)
     stopifnot(is.numeric(nitertraining) | is.na(nitertraining))
     stopifnot(is.numeric(nprintsum) & length(nprintsum) == 1)
+    stopifnot(is.numeric(maxscale) & length(maxscale) == 1)
+    stopifnot(maxscale > 0)
+    stopifnot(is.numeric(niterdim) & length(niterdim) == 1)
+    stopifnot(niterdim < niter)
+    stopifnot(nprintsum %% nadapt == 0)
     
 	#check data
 	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
@@ -184,7 +191,7 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = N
 	for(j in 1:nchains)
 	{
         vars <- varsorig
-        model.sim[[j]] <- logisticMH(dat, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], inits_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), ninitial, random, nprintsum)
+        model.sim[[j]] <- logisticMH(dat, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], inits_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), nadapt, random, nprintsum, maxscale, niterdim)
         model.randint[[j]] <- model.sim[[j]][[2]]
         model.sim[[j]] <- model.sim[[j]][[1]]
         if(nrandint == 0)
