@@ -336,6 +336,8 @@ List logisticMH (arma::mat data, arma::vec nsamples, int nrandint, arma::ivec ra
                 {
                     temprandmn[j] = 0.0;
                     temprandvar[j] = 0.1 * 0.1;
+                    tempsigmarandmn[j] = 0.0;
+                    tempsigmarandvar[j] = 0.1 * 0.1;
                     
                     nacc_rand[j] = 0;
                     nattempt_rand[j] = 0;
