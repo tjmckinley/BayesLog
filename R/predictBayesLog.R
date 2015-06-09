@@ -104,5 +104,23 @@ predict.bayesLog <- function(object, newdata, ...)
     #back-transform to probability scale
     pred <- lapply(pred, function(x) exp(x) / (1 + exp(x)))
     
-    pred
+    #perform predictive sampling
+    pred1 <- lapply(pred, function(x)
+    {
+        n <- ncol(x)
+        x <- as.vector(x)
+        y <- rbinom(length(x), size = 1, prob = x)
+        y <- matrix(y, ncol = n)
+        y
+    })
+    
+    pred2 <- list()
+    for(i in 1:length(pred))
+    {
+        pred2[[i]] <- list()
+        pred2[[i]]$postmn <- pred[[i]]
+        pred2[[i]]$postpred <- pred1[[i]]
+    }
+    
+    pred2
 }
