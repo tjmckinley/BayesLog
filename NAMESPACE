@@ -3,5 +3,6 @@
 export(bayesLog)
 import(Rcpp)
 import(coda)
+import(lme4)
 importFrom(Rcpp,evalCpp)
 useDynLib(BayesLog)
