@@ -7,34 +7,22 @@
 using namespace Rcpp;
 
 // logisticMH
-List logisticMH(arma::mat data, arma::vec nsamples, int nrandint, arma::ivec randint, arma::ivec cumrandindex, IntegerVector factindex, IntegerVector cumfactindex, arma::vec ini_pars, arma::vec ini_sigma, double ini_sigmarand, int gen_inits, arma::mat priors, int niter, int nitertraining, double scale, int orignpars, int varselect, int ninitial, int random, int nprintsum, double maxscale, double niterdim);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP nsamplesSEXP, SEXP nrandintSEXP, SEXP randintSEXP, SEXP cumrandindexSEXP, SEXP factindexSEXP, SEXP cumfactindexSEXP, SEXP ini_parsSEXP, SEXP ini_sigmaSEXP, SEXP ini_sigmarandSEXP, SEXP gen_initsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP nitertrainingSEXP, SEXP scaleSEXP, SEXP orignparsSEXP, SEXP varselectSEXP, SEXP ninitialSEXP, SEXP randomSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP) {
+arma::mat logisticMH(arma::mat data, arma::vec nsamples, arma::vec ini_pars, arma::mat priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim);
+RcppExport SEXP BayesLog_logisticMH(SEXP dataSEXP, SEXP nsamplesSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
     Rcpp::traits::input_parameter< arma::mat >::type data(dataSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type nsamples(nsamplesSEXP);
-    Rcpp::traits::input_parameter< int >::type nrandint(nrandintSEXP);
-    Rcpp::traits::input_parameter< arma::ivec >::type randint(randintSEXP);
-    Rcpp::traits::input_parameter< arma::ivec >::type cumrandindex(cumrandindexSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type factindex(factindexSEXP);
-    Rcpp::traits::input_parameter< IntegerVector >::type cumfactindex(cumfactindexSEXP);
     Rcpp::traits::input_parameter< arma::vec >::type ini_pars(ini_parsSEXP);
-    Rcpp::traits::input_parameter< arma::vec >::type ini_sigma(ini_sigmaSEXP);
-    Rcpp::traits::input_parameter< double >::type ini_sigmarand(ini_sigmarandSEXP);
-    Rcpp::traits::input_parameter< int >::type gen_inits(gen_initsSEXP);
     Rcpp::traits::input_parameter< arma::mat >::type priors(priorsSEXP);
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    Rcpp::traits::input_parameter< int >::type nitertraining(nitertrainingSEXP);
     Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
-    Rcpp::traits::input_parameter< int >::type orignpars(orignparsSEXP);
-    Rcpp::traits::input_parameter< int >::type varselect(varselectSEXP);
-    Rcpp::traits::input_parameter< int >::type ninitial(ninitialSEXP);
-    Rcpp::traits::input_parameter< int >::type random(randomSEXP);
+    Rcpp::traits::input_parameter< int >::type nadapt(nadaptSEXP);
     Rcpp::traits::input_parameter< int >::type nprintsum(nprintsumSEXP);
     Rcpp::traits::input_parameter< double >::type maxscale(maxscaleSEXP);
     Rcpp::traits::input_parameter< double >::type niterdim(niterdimSEXP);
-    __result = Rcpp::wrap(logisticMH(data, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, ini_pars, ini_sigma, ini_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, varselect, ninitial, random, nprintsum, maxscale, niterdim));
+    __result = Rcpp::wrap(logisticMH(data, nsamples, ini_pars, priors, niter, scale, nadapt, nprintsum, maxscale, niterdim));
     return __result;
 END_RCPP
 }

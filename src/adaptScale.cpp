@@ -1,4 +1,4 @@
-#include "functions.h"
+#include "functions.hpp"
 
 //function to scale proposal variance
 double adapt_scale(int nacc, int niter, double desacc, double propscale, int totiter, double maxscale, double niterdim)

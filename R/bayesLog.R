@@ -8,266 +8,115 @@
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
 #' @param gen_inits     Logical stating whether initial values are to be generated at random or
-#'                      input by the user. If the latter then \code{inits} and \code{inits_sigma}
+#'                      input by the user. If the latter then \code{inits}
 #'                      must be supplied.
 #' @param inits         List containing vectors of initial values for the regression parameters.
-#' @param inits_sigma   List containing vectors of initial values for the regression SD hyperparameters.
-#' @param inits_sigmarand Initial values for the random intercept SD hyperparameter.
+#' @param priorvar      A numeric specifying the prior variance for all regression terms.
 #' @param nchains       Number of chains to run.
 #' @param niter         Number of iterations to run per chain.
 #' @param scale         Mixing proportion for adapt proposal.
-#' @param varselect     Logical stating whether variable selection is to be used.
 #' @param nadapt        Number of iterations between each adaptive proposal update.
-#' @param priorvar      Prior variance for fixed effects (currently scalar).
-#' @param random        Character: taking the values "fixed", "globrand" or "locrand" to denote fixed
-#'                      effects, a global random effect or local random effects.
-#' @param nitertraining the number of iterations for the training run (if required)
 #' @param nprintsum     how often to print run time information to the screen
 #' @param maxscale      the maximum scaling of the adaptive proposal variance at each update
 #' @param niterdim      the iteration at which the diminishing adaptation component kicks in
 #'
-#' @return An object of class \code{bayesLog}, which is basically a list
-#' including a subset of elements:
-#' \itemize{
-#' \item{model.sim:}{ an \code{mcmc.list} containing the posterior samples.}
-#' \item{model.randint:}{ an \code{mcmc.list} containing the posterior samples for the random
-#' intercepts terms (only present if random intercepts used).}
-#' \item{data:}{ a \code{data.frame} containing the data used to fit the model.}
-#' \item{formula:}{ a \code{formula} used to define the model.}
-#' }
+#' @return An object of class \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.
 #'
-#' @aliases print.bayesLog
 
-bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_sigma = NA, inits_sigmarand = NA, nchains = 2, niter = 200000, scale = 0.05, varselect = FALSE, nadapt = 100, priorvar = 10000, random = c("fixed", "globrand", "locrand"), nitertraining = NA, nprintsum = 1000, maxscale = 2, niterdim = 1000)
+bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, priorvar = 1, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000)
 {
     # extract formula
-    form <- extractTerms(formula)
-    # extract random intercepts term if required
-    RE <- form[[2]]
-    form <- form[[1]]
+    form <- extractTerms(formula)[[1]]
     
     #check inputs
     stopifnot(is.data.frame(dat))
+    
     stopifnot(is.logical(gen_inits) & length(gen_inits) == 1)
+    
     stopifnot(is.list(inits) | is.na(inits[1]))
     stopifnot(all(sapply(inits, is.vector)) | gen_inits)
-    stopifnot(is.list(inits_sigma) | is.na(inits[1]))
-    stopifnot(all(sapply(inits_sigma, is.vector)) | gen_inits)
-    stopifnot((is.numeric(inits_sigmarand) & length(inits_sigmarand) == 1 ) | gen_inits | is.null(RE))
-    stopifnot(is.numeric(nchains) & length(nchains) == 1)
-    stopifnot(is.numeric(niter) & length(niter) == 1)
-    stopifnot(is.numeric(scale) & length(scale) == 1, scale > 0, scale < 1)
-    stopifnot(is.logical(varselect) & length(varselect) == 1)
-    stopifnot(is.numeric(nadapt) & length(nadapt) == 1)
+    
     stopifnot(is.numeric(priorvar) & length(priorvar) == 1)
-    stopifnot(is.character(random) & all(!is.na(match(random[1], c("fixed", "globrand", "locrand")))))
-    stopifnot(length(nitertraining) == 1)
-    stopifnot(is.numeric(nitertraining) | is.na(nitertraining))
-    stopifnot(is.numeric(nprintsum) & length(nprintsum) == 1)
+    stopifnot(priorvar > 0)
+    
+    stopifnot(is.numeric(nchains) & length(nchains) == 1 & abs(floor(nchains) - nchains) < .Machine$double.eps ^ 0.5)
+    stopifnot(is.numeric(niter) & length(niter) == 1 & abs(floor(niter) - niter) < .Machine$double.eps ^ 0.5)
+    
+    stopifnot(is.numeric(scale) & length(scale) == 1, scale > 0, scale < 1)
+    stopifnot(is.numeric(nadapt) & length(nadapt) == 1 & abs(floor(nadapt) - nadapt) < .Machine$double.eps ^ 0.5)
+    
+    stopifnot(is.numeric(nprintsum) & length(nprintsum) == 1& abs(floor(nprintsum) - nprintsum) < .Machine$double.eps ^ 0.5)
     stopifnot(is.numeric(maxscale) & length(maxscale) == 1)
     stopifnot(maxscale > 0)
-    stopifnot(is.numeric(niterdim) & length(niterdim) == 1)
+    stopifnot(is.numeric(niterdim) & length(niterdim) == 1& abs(floor(niterdim) - niterdim) < .Machine$double.eps ^ 0.5)
     stopifnot(niterdim < niter)
     stopifnot(nprintsum %% nadapt == 0)
     
 	#check data
 	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
 	
-	#check names don't have underscores
-	if(length(grep(glob2rx("*_*"), colnames(dat))) > 0) stop("Can't have variable names with underscores")
-	
 	#check data names
     mf <- model.frame(formula = form, data = dat, na.action = na.fail)
-	stopifnot(length(table(dat[, 1])) == 2)
-    # check there are no columns called 'RE' or 'counts'
+    
+    #check binary response
+    mf.resp <- mf[[1]]
+	stopifnot(length(table(mf.resp)) == 2)
+	
+	#convert rest of data into design matrix
+    mf <- model.matrix(model.form, mf)
+    
+    # check there are no columns called 'RE' or 'nsamples'
     temp <- match(c("RE", "nsamples"), attr(mf, "names"))
     if (length(temp[!is.na(temp)]) > 0) stop("Can't name variables 'RE' or 'nsamples'")
     
-    # create vector for random intercepts if required
-    if (is.null(RE)) randint <- NA 
-    else
-    {
-        randint <- dat[, match(RE, colnames(dat)), drop = F]
-        for(j in 1:ncol(randint)) if (!is.factor(randint[, j])) stop("Random intercepts term is not a factor")
-        randintvars <- list()
-        for(j in 1:ncol(randint)) randintvars[[j]] <- levels(randint[, j])
-        for(j in 1:ncol(randint)) randint[, j] <- as.numeric(randint[, j])
-    }
-    
-    # condense data into succinct form for model
-    dat <- dat[, match(attr(mf, "names"), colnames(dat))]
-    if (!is.null(RE))
-    {
-        dat$RE <- randint[, 1]
-        randintvars <- randintvars[[1]]
-        #currently only handles one random intercept term
-        if(ncol(randint) > 1) print("CURRENTLY ONLY HANDLES A SINGLE RANDOM INTERCEPT VARIABLE")
-        origdat <- dat
-    }
-    else
-    {
-        origdat <- dat
-        dat$RE <- rep(1, nrow(dat))
-    }
-    
     # now aggregate data to speed code up
-    dat <- aggregate(rep(1, nrow(dat)), dat, table)
-    dat[, ncol(dat)] <- as.numeric(dat[, ncol(dat)])
-    nsamples <- dat[, ncol(dat)]
-    dat <- dat[, -ncol(dat)]
-    
-    #if random intercept variable being used, then sort data and extract index vectors
-    dat <- dat[sort.list(dat$RE), ]
-    randint <- dat$RE - 1
-    dat <- dat[, -match("RE", colnames(dat))]
-    randindex <- table(randint)
-    cumrandindex <- c(0, cumsum(randindex))
-    nrandint <- length(randindex)
-    nrandint <- ifelse(nrandint > 1, nrandint, 0)
-    
-	#extract original number of variables
-	orignpars <- ncol(dat) - 1
+    mf <- as.data.frame(mf)
+    mf <- cbind(resp = mf.resp, mf)
+    mf <- aggregate(rep(1, nrow(mf)), mf, table)
+    mf[, ncol(mf)] <- as.numeric(mf[, ncol(mf)])
+    nsamples <- mf[, ncol(mf)]
+    mf <- mf[, -ncol(mf)]
 	
-    #convert data frame into correct format for use
-    #in Bayesian model
-    dat <- createLinear(dat, colnames(dat)[1])
-    
-    #extract components necessary for MCMC
-    factindex <- as.numeric(table(dat$factindex))
-    cumfactindex <- c(0, cumsum(factindex)[-length(factindex)]) + 1
-    varsorig <- dat$vars
-    dat <- dat$data
-    
-	#convert data to matrix
-	dat <- as.matrix(dat)
+	#convert back to matrix for running C++ code
+	mf <- as.matrix(mf)
 	
 	#extract number of parameters
-	npars <- ncol(dat) - 1
-	
-	#set random effect indicator
-	random <- ifelse(random[1] == "fixed", 0, ifelse(random[1] == "globrand", 1, 2))
+	npars <- ncol(mf) - 1
+    
+    #generate prior matrix
+    priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
 	
 	#generate initial values
 	if(gen_inits)
 	{
-        gen_inits <- 1
         inits <- list(nchains)
-        for(j in 1:nchains) inits[[j]] <- rep(1, ncol(dat))
-        inits_sigma <- list(nchains)
-        for(j in 1:nchains) inits_sigma[[j]] <- rep(1, ncol(dat))
-        inits_sigmarand <- 1
+        for(j in 1:nchains) inits[[j]] <- rnorm(npars, 0, 10)
     }
 	else
 	{
-	    if(length(inits) != nchains | length(inits_sigma) != nchains) stop("List of initial values doesn't match number of chains")
+	    if(length(inits) != nchains) stop("List of initial values doesn't match number of chains")
 	    else
 	    {
-	        if(!all(sapply(inits, length) == ncol(dat))) stop("Wrong number of initial values")
-	        if(random == 2)
-	        {
-	            if(!all(sapply(inits_sigma, length) == (ncol(dat) - 1))) stop("Wrong number of initial sigma values")
-	        }
-	        if(random == 1)
-	        {
-	            if(!all(sapply(inits_sigma, length) == 1)) stop("Wrong number of initial sigma values")
-	        }
-	        gen_inits <- 0
-	        #add dummy initial sigma for intercept
-	        inits_sigma <- lapply(inits_sigma, function(x) c(1, x))
+	        if(!all(sapply(inits, length) == npars)) stop("Wrong number of initial values")
 	    }
-	    if(is.na(inits_sigmarand) & !is.null(RE)) stop("Initial value for random intercept SD hyperparameter must be specified")
 	}
 	
-	#set priors
-	priors <- matrix(c(rep(c(0, priorvar), times = npars + 1), rep(c(0, 20), times = 2)), ncol = 2, byrow = T)
-	
-	#set training run if required
-	if(is.na(nitertraining) || !varselect) nitertraining <- 0
-	if(nitertraining >= niter) stop("'nitertraining' must be less than 'niter'")
+	#extract variable names
+	varnames <- colnames(mf)[-1]
 	
 	#run model
 	model.sim <- list(NULL)
-	model.randint <- list(NULL)
 	for(j in 1:nchains)
 	{
-        vars <- varsorig
-        model.sim[[j]] <- logisticMH(dat, nsamples, nrandint, randint, cumrandindex, factindex, cumfactindex, inits[[j]], inits_sigma[[j]], inits_sigmarand, gen_inits, priors, niter, nitertraining, scale, orignpars, ifelse(varselect, 1, 0), nadapt, random, nprintsum, maxscale, niterdim)
-        model.randint[[j]] <- model.sim[[j]][[2]]
-        model.sim[[j]] <- model.sim[[j]][[1]]
-        if(nrandint == 0)
-        {
-            if(random == 0)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post")
-            }
-            if(random == 1)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post")
-            }
-            if(random == 2)
-            {
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", c("int", vars)), paste0("I_", c("int", vars)), "post")
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
-            }
-        }
-        else
-        {
-            model.randint[[j]] <- model.randint[[j]][, -ncol(model.randint[[j]])]
-            colnames(model.randint[[j]]) <- paste0("randint_", randintvars)
-            model.randint[[j]] <- as.mcmc(model.randint[[j]])
-            if(random == 0)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("I_", vars), "post", "SDrandint")
-            }
-            if(random == 1)
-            {
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 3)]
-                colnames(model.sim[[j]]) <- c("Intercept", vars, "sigma", paste0("I_", vars), "post", "SDrandint")
-            }
-            if(random == 2)
-            {
-                colnames(model.sim[[j]]) <- c("Intercept", vars, paste0("sigma_", c("int", vars)), paste0("I_", c("int", vars)), "post", "SDrandint")
-                model.sim[[j]] <- model.sim[[j]][, -c(npars + 2, 2 * npars + 3)]
-            }
-            #swap order
-            model.sim[[j]] <- model.sim[[j]][, c(1:(ncol(model.sim[[j]]) - 2), ncol(model.sim[[j]]), (ncol(model.sim[[j]])  - 1))] 
-        }
-        if(!varselect) model.sim[[j]] <- model.sim[[j]][, -grep(glob2rx("I_*"), colnames(model.sim[[j]]))]
-        else
-        {
-            #concatenate outputs from indicator variables
-            vars <- colnames(model.sim[[j]])
-            varind <- grep(glob2rx("I_*"), vars)
-            vars <- vars[varind]
-            vars <- sapply(strsplit(vars, "_"), function(x) x[2])
-            colnames(model.sim[[j]])[varind] <- paste0("I_", vars)
-            model.sim[[j]] <- model.sim[[j]][, -varind[duplicated(vars)]]
-        }   
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim)
+        #set variable names
+        colnames(model.sim[[j]]) <- c(varnames, "logposterior")
+        #convert to MCMC object
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
     
 	#return output
-	model.sim <- as.mcmc.list(model.sim)
-	model.sim <- list(model.sim = model.sim)
-	if(nrandint > 0)
-	{   
-	    model.randint <- as.mcmc.list(model.randint)
-	    model.sim$model.randint <- model.randint
-	}
-	model.sim$data <- origdat
-	model.sim$formula <- formula
-	class(model.sim) <- "bayesLog"
+	if(nchains > 1) model.sim <- as.mcmc.list(model.sim)
+	else model.sim <- model.sim[[1]]
 	model.sim
-}
-
-#print generic
-#' @export
-print.bayesLog <- function(x, ...)
-{
-    stopifnot(class(x) == "bayesLog")
-    
-    print(summary(x))
 }
