@@ -9,7 +9,7 @@
 #' @docType package
 #' @name BayesLog-package
 #' @author TJ McKinley <t.mckinley@@exeter.ac.uk>
-#' @import coda Rcpp lme4 pROC
+#' @import coda Rcpp RcppArmadillo lme4 pROC
 #' @useDynLib BayesLog
 NULL
 

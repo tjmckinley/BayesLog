@@ -6,10 +6,8 @@
 #'
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
-#' @param gen_inits     Logical stating whether initial values are to be generated at random or
-#'                      input by the user. If the latter then \code{inits}
-#'                      must be supplied.
-#' @param inits         List containing vectors of initial values for the regression parameters.
+#' @param inits         List containing vectors of initial values for the regression
+#' parameters. If missing then these are simulated.
 #' @param priorvar      A numeric specifying the prior variance for all regression terms.
 #' @param nchains       Number of chains to run.
 #' @param niter         Number of iterations to run per chain.
@@ -18,20 +16,20 @@
 #' @param nprintsum     how often to print run time information to the screen
 #' @param maxscale      the maximum scaling of the adaptive proposal variance at each update
 #' @param niterdim      the iteration at which the diminishing adaptation component kicks in
+#' @param blocks        a list of integer vectors defining parameters to update in blocks.
+#' Missing parameters are filled in automatically as componentwise updates.
 #'
 #' @return An object of class \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.
 #'
 
-bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000)
+bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
 	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
     
-    stopifnot(is.logical(gen_inits) & length(gen_inits) == 1)
-    
     stopifnot(is.list(inits) | is.na(inits[1]))
-    stopifnot(all(sapply(inits, is.vector)) | gen_inits)
+    stopifnot(all(sapply(inits, is.vector)) | is.na(inits[1]))
     
     stopifnot(is.numeric(priorvar) & length(priorvar) == 1)
     stopifnot(priorvar > 0)
@@ -52,6 +50,8 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
     stopifnot(niterdim < niter)
     stopifnot(nprintsum %% nadapt == 0)
     
+    stopifnot(is.list(blocks) | is.na(blocks[1]))
+    
     #save formula and data set for later output
     origformula <- formula
     origdat <- dat
@@ -67,6 +67,27 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
 	
 	#extract number of parameters
 	npars <- ncol(mf) - 1
+	
+	if(!is.na(blocks[1]))
+	{
+        stopifnot(all(sapply(blocks, function(x) all(!is.na(x)) & all(x > 0) & all(abs(floor(x) - x) < .Machine$double.eps ^ 0.5) & all(x <= npars))))
+        stopifnot(length(unique(do.call("c", blocks))) == length(do.call("c", blocks)))
+        
+        inds <- 1:npars
+        for(i in 1:length(blocks)) inds <- inds[-match(blocks[[i]], inds)]
+        if(length(inds) > 0)
+        {
+            inds <- as.list(inds)
+            blocks <- c(blocks, inds)
+        }
+        nblocks <- sapply(blocks, length)
+    }
+    else
+    {
+        blocks <- as.list(1:npars)
+        nblocks <- sapply(blocks, length)
+    }
+    blocks <- lapply(blocks, function(x) x - 1)
     
     #generate prior matrix
     priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
@@ -88,7 +109,7 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
 	else randindexes <- list(NULL)
 	
 	#generate initial values
-	if(gen_inits)
+	if(is.na(inits[1]))
 	{
         inits <- list(NULL)
         for(j in 1:nchains)
@@ -113,7 +134,7 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand)
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks)
         #set variable names
         if(nrand > 0)
         {

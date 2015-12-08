@@ -10,6 +10,8 @@ Description: Package uses MCMC methods for fitting binary logistic regression mo
     a Bayesian framework.
 License: GPL (>= 2)
 Imports: Rcpp (>= 0.11.4),
+         RcppArmadillo,
          coda,
          lme4
-LinkingTo: Rcpp
+LinkingTo: Rcpp,
+           RcppArmadillo

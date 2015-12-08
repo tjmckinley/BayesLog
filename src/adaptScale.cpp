@@ -29,3 +29,62 @@ double adapt_scale(int nacc, int niter, double desacc, double propscale, int tot
     return propscale1;
 }
 
+//function to calculate means and covariance matrices for adaptive MCMC
+void adapt_update(int i, int ninitial, int niter, int npars, double adaptscale, arma::vec *tempmn, arma::mat *meanmat, arma::mat *meanmat1, NumericMatrix posterior, arma::mat *propcov, int subrow, arma::ivec *elements)
+{
+    int j, k, m;
+
+    //update var-covariances for adaptive proposal
+    if((i + 1) == ninitial)
+    {
+        //calculates variance-covariance matrix
+        //first: means
+        for(j = 0; j < npars; j++)
+        {
+            (*tempmn)(j) = 0;
+            for(k = 0; k <= i; k++) (*tempmn)(j) += posterior(k, (*elements)(j));
+            (*tempmn)(j) = (*tempmn)(j) / ((double) i + 1);
+        }
+        //matrix of product of means
+        for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat)(j, k) = (*tempmn)(j) * (*tempmn)(k);
+        (*propcov).zeros();
+        for(j = 0; j < npars; j++)
+        {
+            for(k = 0; k < npars; k++)
+            {
+                for(m = 0; m <= i; m++) (*propcov)(j, k) += posterior(m, (*elements)(j)) * posterior(m, (*elements)(k));
+                (*propcov)(j, k) -= (i + 1) * (*meanmat)(j, k);
+                (*propcov)(j, k) = (*propcov)(j, k) / ((double) i);
+            }
+        }
+        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) *= adaptscale;
+    }
+    else
+    {
+        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) /= adaptscale;
+        //recursively update mean and covariance matrix
+        for(j = 0; j < npars; j++) (*tempmn)(j) = ((*tempmn)(j) * i + posterior(subrow, (*elements)(j))) / ((double) i + 1);
+        //new matrix of product of means
+        for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat1)(j, k) = (*tempmn)(k) * (*tempmn)(j);
+        for(j = 0; j < npars; j++)
+        {
+            for(k = 0; k < npars; k++)
+            {
+                (*propcov)(j, k) = (((double) (i - 1)) / ((double) i)) * (*propcov)(j, k) + (1.0 / ((double) i)) * (i * (*meanmat)(j, k) - (i + 1) * (*meanmat1)(j, k) + posterior(subrow, (*elements)(j)) * posterior(subrow, (*elements)(k)));
+            }
+        }
+        for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat)(j, k) = (*meanmat1)(j, k);
+        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) *= adaptscale;
+    }
+//    if(npars > 1 && (i + 1) % 100 == 0)
+//    {
+//        Rprintf("\nPropcov:\n");
+//        for(k = 0; k < npars; k++)
+//        {
+//            for(j = 0; j < npars; j++) Rprintf("%f ", (*propcov)(k, j) / adaptscale);
+//            Rprintf("\n");
+//        }
+//    }
+    return;
+}
+

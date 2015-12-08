@@ -7,7 +7,7 @@
 bayesLog(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA,
   priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 2e+05,
   scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2,
-  niterdim = 1000)
+  niterdim = 1000, blocks = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
@@ -35,6 +35,9 @@ must be supplied.}
 \item{maxscale}{the maximum scaling of the adaptive proposal variance at each update}
 
 \item{niterdim}{the iteration at which the diminishing adaptation component kicks in}
+
+\item{blocks}{a list of integer vectors defining parameters to update in blocks.
+Missing parameters are filled in automatically as componentwise updates.}
 }
 \value{
 An object of class \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.

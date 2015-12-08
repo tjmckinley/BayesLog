@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR)
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR)
 {
     // 'dataR' is a matrix of data with the first column equal to the response variable
     // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
@@ -18,6 +18,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     // 'nrand' is number of random effect terms
     // 'randindexesL' is a list of matrices of indexes for referencing random effects terms
     // 'data_randR' is matrix of data corresponding to random effect terms
+    // 'nblock' is vector of block lengths
+    // 'blockR' is list of indexes for block updating
     
     //initialise indexing variables
     int i, j, k, m;
@@ -177,6 +179,46 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         }
     }
     
+    //set up covariance matrices for block-updating if required
+    int nblocks = nblock.size();
+    arma::field<arma::ivec> block (nblocks);
+    arma::field<arma::vec> z1 (nblocks);
+    arma::field<arma::vec> z2 (nblocks);
+    arma::field<arma::vec> tempmn (nblocks);
+    arma::field<arma::mat> meanmat (nblocks);
+    arma::field<arma::mat> meanmat1 (nblocks);
+    arma::field<arma::mat> propcov (nblocks);
+    arma::field<arma::mat> propcovI (nblocks);
+    arma::field<arma::mat> propcov_chol (nblocks);
+    arma::field<arma::mat> propcov_temp (nblocks);
+    arma::field<arma::mat> propcovI_chol (nblocks);
+    arma::vec tempv (1);
+    arma::mat tempm (1, 1);
+    for(m = 0; m < nblocks; m++)
+    {
+        SEXP tempivR = blockR[m];
+        arma::ivec tempiv = as<arma::ivec>(tempivR); 
+        block(m) = tempiv;
+        
+        tempv.set_size(nblock(m));
+        tempv.zeros();
+        tempm.set_size(nblock(m), nblock(m));
+        tempm.zeros();
+        z1(m) = tempv;
+        z2(m) = tempv;
+        tempmn(m) = tempv;
+        meanmat(m) = tempm;
+        meanmat1(m) = tempm;
+        
+        tempm.eye();
+        tempm.diag() *= pow(0.1, 2.0) / ((double) nblock(m));
+        propcov(m) = tempm;
+        propcovI(m) = tempm;
+        propcov_temp(m) = chol(tempm, "lower");
+        propcov_chol(m) = chol(tempm, "lower");
+        propcovI_chol(m) = chol(tempm, "lower");
+    }
+    
     //set up vectors to record acceptance rates
     int *nacc = (int *) R_alloc (npars, sizeof(int));
     int *nacc1 = (int *) R_alloc (npars, sizeof(int));
@@ -231,21 +273,53 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         //check for user interruptions
         if (i % 10 == 0) R_CheckUserInterrupt();
         
-        //now propose updates for regression terms
-        for(k = 0; k < (npars - nrand); k++)
+        //cycle through update blocks
+        for(m = 0; m < nblocks; m++)
         {
-            // propose new parameter value
-            if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
-            else pars_prop[k] = R::rnorm(pars[k], propsd[k]);
-            nattempt[k]++;
+            if(nblock(m) > 1)
+            {
+                if(R::runif(0.0, 1.0) < scale)
+                {
+                    for(j = 0; j < nblock(m); j++) z1(m)(j) = R::rnorm(0.0, 1.0);
+                    for(j = 0; j < nblock(m); j++)
+                    {
+                        z2(m)(j) = 0.0;
+                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(j) * propcovI_chol(m)(j, k);
+                        pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
+                    }
+                }
+                else
+                {
+                    for(j = 0; j < nblock(m); j++) z1(m)(j) = R::rnorm(0.0, 1.0);
+                    for(j = 0; j < nblock(m); j++)
+                    {
+                        z2(m)(j) = 0.0;
+                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(j) * propcov_chol(m)(j, k);
+                        pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
+                    }
+                }
+                for(j = 0; j < nblock(m); j++) nattempt[block(m)(j)]++;
+            }
+            else
+            {
+                // propose new parameter value
+                if(R::runif(0.0, 1.0) < scale) pars_prop[block(m)(0)] = R::rnorm(pars[block(m)(0)], 0.1);
+                else pars_prop[block(m)(0)] = R::rnorm(pars[block(m)(0)], propsd[block(m)(0)]);
+                nattempt[block(m)(0)]++;
+            }
+            
             
             // calculate log-likelihood
             LL_prop = loglike(pars_prop, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
             acc_prop = LL_prop;
             acc_curr = LL_curr;
             //adjust for prior
-            acc_curr += R::dnorm(pars[k], priors(k, 0), sqrt(priors(k, 1)), 1);
-            acc_prop += R::dnorm(pars_prop[k], priors(k, 0), sqrt(priors(k, 1)), 1);
+            for(j = 0; j < nblock(m); j++)
+            {
+                k = block(m)(j);
+                acc_curr += R::dnorm(pars[k], priors(k, 0), sqrt(priors(k, 1)), 1);
+                acc_prop += R::dnorm(pars_prop[k], priors(k, 0), sqrt(priors(k, 1)), 1);
+            }
             acc = acc_prop - acc_curr;
             //proposals cancel
             
@@ -254,13 +328,31 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 if(log(R::runif(0.0, 1.0)) < acc)
                 {
-                    pars[k] = pars_prop[k];
-                    nacc[k]++;
+                    for(j = 0; j < nblock(m); j++)
+                    {
+                        k = block(m)(j);
+                        pars[k] = pars_prop[k];
+                        nacc[k]++;
+                    }
                     LL_curr = LL_prop;
                 }
-                else pars_prop[k] = pars[k];
+                else
+                {
+                    for(j = 0; j < nblock(m); j++)
+                    {
+                        k = block(m)(j);
+                        pars_prop[k] = pars[k];
+                    }
+                }
             }
-            else pars_prop[k] = pars[k];
+            else
+            {
+                for(j = 0; j < nblock(m); j++)
+                {
+                    k = block(m)(j);
+                    pars_prop[k] = pars[k];
+                }
+            }
         }
         
         if(nrand > 0)
@@ -362,7 +454,14 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         // record posterior mean and variances for use in proposals
         if ((i + 1) % nadapt == 0)
         {
-            for(j = 0; j < npars; j++) propsd[j] = adapt_scale(nacc[j] - nacc1[j], nattempt[j] - nattempt1[j], 0.44, propsd[j], (double) i + 1, maxscale, niterdim);
+            for(m = 0; m < nblocks; m++)
+            {
+                for(k = 0; k < nblock(m); k++)
+                {
+                    j = block(m)(k);
+                    propsd[j] = adapt_scale(nacc[j] - nacc1[j], nattempt[j] - nattempt1[j], (nblock(m) > 1 ? 0.23:0.44), propsd[j], (double) i + 1, maxscale, niterdim);
+                }
+            }
             if(nrand > 0)
             {
                 for(j = 0; j < nrand; j++)
@@ -389,6 +488,33 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
             }
         }  
+                
+        //update var-cov matrix for adaptive proposal
+ 		if((i + 1) >= 100)
+ 		{
+ 		    for(m = 0; m < nblocks; m++)
+ 		    {
+ 		        if(nblock(m) > 1) adapt_update(i, 100, niter, nblock(m), 1.0, &(tempmn(m)), &(meanmat(m)), &(meanmat1(m)), output, &(propcov(m)), i, &(block(m)));
+ 		        propcov_temp(m) = propcov(m) * propsd[block(m)(0)];
+ 		        propcov_chol(m) = chol(propcov_temp(m), "lower");
+ 		        
+//                if((i + 1) % 100 == 0)
+//                {
+//                    Rprintf("\nPropcov:\n");
+//                    for(k = 0; k < npars; k++)
+//                    {
+//                        for(j = 0; j < npars; j++) Rprintf("%f ", propcov(m)(k, j));
+//                        Rprintf("\n");
+//                    }
+//                    Rprintf("\nPropcov_t:\n");
+//                    for(k = 0; k < npars; k++)
+//                    {
+//                        for(j = 0; j < npars; j++) Rprintf("%f ", propcov_temp(m)(k, j));
+//                        Rprintf("\n");
+//                    }
+//                }
+ 		    }
+ 		}
         
         if((i + 1) % nprintsum == 0)
         {          
