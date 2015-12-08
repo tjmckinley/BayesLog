@@ -2,6 +2,7 @@
 
 S3method("[",bayesLog)
 S3method(as.matrix,bayesLog)
+S3method(predict,bayesLog)
 S3method(print,bayesLog)
 S3method(summary,bayesLog)
 S3method(window,bayesLog)

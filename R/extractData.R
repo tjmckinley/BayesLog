@@ -1,7 +1,7 @@
 #function to extract correct variables from data set and generate
 #design matrix
 
-extractData <- function(formula, dat)
+extractData <- function(formula, dat, agg = TRUE)
 {
     #check intercept is present
     form <- terms(formula)
@@ -48,16 +48,20 @@ extractData <- function(formula, dat)
     temp <- match("nsamples", attr(mf, "names"))
     if (length(temp[!is.na(temp)]) > 0) stop("Can't name variable 'nsamples'")
     
-    # now aggregate data to speed code up
-    mf <- as.data.frame(mf)
-    mf <- cbind(resp = mf.resp, mf)
-    mf <- aggregate(rep(1, nrow(mf)), mf, table)
-    mf[, ncol(mf)] <- as.numeric(mf[, ncol(mf)])
-    nsamples <- mf[, ncol(mf)]
-    mf <- mf[, -ncol(mf)]
+    if(agg)
+    {
+        # now aggregate data to speed code up
+        mf <- as.data.frame(mf)
+        mf <- cbind(resp = mf.resp, mf)
+        mf <- aggregate(rep(1, nrow(mf)), mf, table)
+        mf[, ncol(mf)] <- as.numeric(mf[, ncol(mf)])
+        nsamples <- mf[, ncol(mf)]
+        mf <- mf[, -ncol(mf)]
 	
-	#convert back to matrix for running C++ code
-	mf <- as.matrix(mf)
+	    #convert back to matrix for running C++ code
+	    mf <- as.matrix(mf)
+	}
+	else nsamples <- rep(1, nrow(mf))
 	
 	#extract hierarchical terms if necessary
 	if(nrand > 0)
