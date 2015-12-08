@@ -193,5 +193,11 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
 	#return output
 	if(nchains > 1) model.sim <- as.mcmc.list(model.sim)
 	else model.sim <- model.sim[[1]]
+	
+	#append data and formula to object
+	model.sim <- list(post = model.sim, formula = origformula, data = origdat)
+	
+	#set class
+	class(model.sim) <- "bayesLog"
 	model.sim
 }
