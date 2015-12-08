@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, arma::mat priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, arma::imat data_randR)
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR)
 {
     // 'dataR' is a matrix of data with the first column equal to the response variable
     // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
@@ -30,13 +30,13 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
     int npars = ini_pars.size();
     
     //set terms for parallelising code
-    arma::vec logL(dataR.n_rows);
+    NumericVector logL(dataR.nrow());
     
     //print runtime information to the screen    
     i = 0;
     for(j = 0; j < nsamplesR.size(); j++) i += nsamplesR[j];
     Rprintf("\nNumber of samples in data set = %d\n", i);
-    Rprintf("Number of unique samples in data set = %d\n", dataR.n_rows);
+    Rprintf("Number of unique samples in data set = %d\n", dataR.nrow());
     
     Rprintf("\nRun time information printed to screen every %d iterations\n", nprintsum);
     Rprintf("Number of iterations = %d\n", niter);
@@ -52,8 +52,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
     if(nrand > 0) Rprintf("Priors RE: lower = %f upper = %f\n", priors(npars - 1, 0), priors(npars - 1, 1));
     
     //convert Rcpp objects to native C objects for fast processing
-    int data_nrows = dataR.n_rows;
-    int data_ncols = dataR.n_cols;
+    int data_nrows = dataR.nrow();
+    int data_ncols = dataR.ncol();
     double **data = (double **) R_alloc (data_nrows, sizeof(double *));
     for(i = 0; i < data_nrows; i++) data[i] = (double *) R_alloc (data_ncols, sizeof(double));
     for(i = 0; i < data_nrows; i++) for(j = 0; j < data_ncols; j++) data[i][j] = dataR(i, j);
@@ -107,8 +107,7 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
     // set up output vector of length 'niter' to record chain
     // (append extra column for unnormalised posterior)
     int noutput = npars + cumrandlevels[nrand - 1] + nrandlevels[nrand - 1] + 1;
-    arma::mat output(niter, noutput);
-    output.zeros();    
+    NumericMatrix output(niter, noutput);
     
     // initialise chain and set up vector to hold proposals
     double *pars = (double *) R_alloc (npars, sizeof(double));
@@ -164,8 +163,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
     if(R_finite(acc_curr) == 0) Rcpp::stop("Initial values are not viable: LL = %f acc = %f", LL_curr, acc_curr);
     
     //set up vectors for adaptive proposals
-    arma::vec propsd(npars);
-    propsd.fill(0.1);
+    double *propsd = (double *) R_alloc (npars, sizeof(double));
+    for(i = 0; i < npars; i++) propsd[i] = 0.1;
     
     double **propsd_rand = (double **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(double *));
     if(nrand > 0)
@@ -178,13 +177,17 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
     }
     
     //set up vectors to record acceptance rates
-    arma::ivec nacc(npars);
-    arma::ivec nacc1(npars);
-    nacc.zeros(); nacc1.zeros();
-    
-    arma::ivec nattempt(npars);
-    arma::ivec nattempt1(npars);
-    nattempt.zeros(); nattempt1.zeros();
+    int *nacc = (int *) R_alloc (npars, sizeof(int));
+    int *nacc1 = (int *) R_alloc (npars, sizeof(int));
+    int *nattempt = (int *) R_alloc (npars, sizeof(int));
+    int *nattempt1 = (int *) R_alloc (npars, sizeof(int));
+    for(i = 0; i < npars; i++)
+    {
+        nacc[i] = 0;
+        nacc1[i] = 0;
+        nattempt[i] = 0;
+        nattempt1[i] = 0;
+    }
     
     int **nacc_rand = (int **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int *));
     int **nattempt_rand = (int **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int *));
@@ -232,8 +235,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
         {
             // propose new parameter value
             if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
-            else pars_prop[k] = R::rnorm(pars[k], propsd(k));
-            nattempt(k)++;
+            else pars_prop[k] = R::rnorm(pars[k], propsd[k]);
+            nattempt[k]++;
             
             // calculate log-likelihood
             LL_prop = loglike(pars_prop, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
@@ -251,7 +254,7 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
                 if(log(R::runif(0.0, 1.0)) < acc)
                 {
                     pars[k] = pars_prop[k];
-                    nacc(k)++;
+                    nacc[k]++;
                     LL_curr = LL_prop;
                 }
                 else pars_prop[k] = pars[k];
@@ -266,8 +269,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
             {
                 // propose new parameter value
                 if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
-                else pars_prop[k] = R::rnorm(pars[k], propsd(k));
-                nattempt(k)++;
+                else pars_prop[k] = R::rnorm(pars[k], propsd[k]);
+                nattempt[k]++;
                 
                 if(pars_prop[k] > priors(k, 0) && pars_prop[k] < priors(k, 1))
                 {
@@ -288,7 +291,7 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
                         if(log(R::runif(0.0, 1.0)) < acc)
                         {
                             pars[k] = pars_prop[k];
-                            nacc(k)++;
+                            nacc[k]++;
                         }
                         else pars_prop[k] = pars[k];
                     }
@@ -358,7 +361,7 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
         // record posterior mean and variances for use in proposals
         if ((i + 1) % nadapt == 0)
         {
-            for(j = 0; j < npars; j++) propsd(j) = adapt_scale(nacc(j) - nacc1(j), nattempt(j) - nattempt1(j), 0.44, propsd(j), (double) i + 1, maxscale, niterdim);
+            for(j = 0; j < npars; j++) propsd[j] = adapt_scale(nacc[j] - nacc1[j], nattempt[j] - nattempt1[j], 0.44, propsd[j], (double) i + 1, maxscale, niterdim);
             if(nrand > 0)
             {
                 for(j = 0; j < nrand; j++)
@@ -370,8 +373,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
             //update counts
             for(j = 0; j < npars; j++)
             {
-                nacc1(j) = nacc(j);
-                nattempt1(j) = nattempt(j);
+                nacc1[j] = nacc[j];
+                nattempt1[j] = nattempt[j];
             }
             if(nrand > 0)
             {
@@ -389,11 +392,11 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
         if((i + 1) % nprintsum == 0)
         {          
             // print some output to screen for book-keeping
-            minacc = ((double) nacc(0)) / ((double) nattempt(0));
+            minacc = ((double) nacc[0]) / ((double) nattempt[0]);
             maxacc = minacc;
             for(j = 1; j < npars; j++)
             {
-                tempacc = ((double) nacc(j)) / ((double) nattempt(j));
+                tempacc = ((double) nacc[j]) / ((double) nattempt[j]);
                 minacc = (minacc < tempacc ? minacc:tempacc);
                 maxacc = (maxacc > tempacc ? maxacc:tempacc);
             }
@@ -428,8 +431,8 @@ arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, 
             //reset counters 
             for(j = 0; j < npars; j++)
             {
-                nacc(j) = 0; nacc1(j) = 0;
-                nattempt(j) = 0; nattempt1(j) = 0;
+                nacc[j] = 0; nacc1[j] = 0;
+                nattempt[j] = 0; nattempt1[j] = 0;
             }
             if(nrand > 0)
             {

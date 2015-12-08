@@ -1,7 +1,7 @@
 #include "functions.hpp"
 
 // function for calculating the log-likelihood
-double loglike (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, arma::vec logL)
+double loglike (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, NumericVector logL)
 {
     //'pars' is a vector of regression parameters
     //'nrow' and 'ncol' are sizes of data set
@@ -42,7 +42,7 @@ double loglike (double *pars, int nrow, int ncol, double **data, double *nsample
 }
 
 // function for calculating a subset of the log-likelihood
-double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, int ***randindexes, int **nrandindexes, int randi, int randj, arma::vec logL)
+double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, int ***randindexes, int **nrandindexes, int randi, int randj, NumericVector logL)
 {
     //'pars' is a vector of regression parameters
     //'data' is matrix of data with response in first column

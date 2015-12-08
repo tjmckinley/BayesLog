@@ -6,13 +6,11 @@
 \title{Bayesian methods for inference and model selection using logistic regression models}
 \description{
 Package uses MCMC methods for fitting logistic regression models in
-a Bayesian framework. Uses reversible-jump MCMC to perform variable selection
-and Bayesian model averaging.
+a Bayesian framework.
 }
 \details{
 Package provides a function \code{bayesLog} for running logistic regression models in
-a Bayesian framework. It also includes generic functions for subsetting, summarising
-and plotting output.
+a Bayesian framework.
 }
 \author{
 TJ McKinley <t.mckinley@exeter.ac.uk>

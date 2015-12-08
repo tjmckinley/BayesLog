@@ -3,7 +3,6 @@
 #' @description Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
 #'
 #' @export
-#' @import coda Rcpp lme4
 #'
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
