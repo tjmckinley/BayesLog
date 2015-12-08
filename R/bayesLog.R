@@ -23,40 +23,10 @@
 #'
 
 bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000)
-{
-    #check intercept is present
-    form <- terms(formula)
-    stopifnot(attributes(form)$intercept == 1)
-    
-    # extract formula
-    rand <- lme4:::findbars(formula)
-    if(!is.null(rand))
-    {
-        rand <- sapply(rand, all.vars)
-        #check that hierarchical terms are factors and
-        #then convert to integers
-        stopifnot(all(!is.na(match(rand, colnames(dat)))))
-        temp <- dat[, match(rand, colnames(dat)), drop = F]
-        dat <- dat[, -match(rand, colnames(dat)), drop = F]
-        for(j in 1:ncol(temp))
-        {
-            stopifnot(is.factor(temp[, j]))
-            temp[, j] <- as.numeric(temp[, j])
-            temp[, j] <- temp[, j] - 1
-        }
-        dat <- cbind(dat, temp)
-        nrand <- length(rand)
-        
-        #reformulate formula to treat extract from dataset in correct way
-        formula <- terms(formula)
-        formula <- drop.terms(formula, grep(rand, all.vars(formula)) - 1, keep.response = T)
-        formula <- reformulate(attr(formula, "term.labels"), all.vars(formula)[1])
-        formula <- update.formula(formula, formula(paste("~ . +", paste(rand, collapse = "+")))) 
-    }
-    else nrand <- 0
-    
+{    
     #check inputs
     stopifnot(is.data.frame(dat))
+	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
     
     stopifnot(is.logical(gen_inits) & length(gen_inits) == 1)
     
@@ -82,8 +52,40 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
     stopifnot(niterdim < niter)
     stopifnot(nprintsum %% nadapt == 0)
     
-	#check data
-	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
+    #save formula and data set for later output
+    origformula <- formula
+    origdat <- dat
+    
+	#check intercept is present
+    form <- terms(formula)
+    stopifnot(attributes(form)$intercept == 1)
+    
+    # extract formula
+    rand <- lme4:::findbars(formula)
+    if(!is.null(rand))
+    {
+        rand <- sapply(rand, all.vars)
+        #check that hierarchical terms are factors and
+        #then convert to integers
+        stopifnot(all(!is.na(match(rand, colnames(dat)))))
+        temp <- dat[, match(rand, colnames(dat)), drop = F]
+        dat <- dat[, -match(rand, colnames(dat)), drop = F]
+        for(j in 1:ncol(temp))
+        {
+            stopifnot(is.factor(temp[, j]))
+            temp[, j] <- as.numeric(temp[, j])
+            temp[, j] <- temp[, j] - 1
+        }
+        dat <- cbind(dat, temp)
+        nrand <- length(rand)
+        
+        #reformulate formula to treat extract from dataset in correct way
+        formula <- terms(formula)
+        formula <- drop.terms(formula, match(rand, all.vars(formula)) - 1, keep.response = T)
+        formula <- reformulate(attr(formula, "term.labels"), all.vars(formula)[1])
+        formula <- update.formula(formula, formula(paste("~ . +", paste(rand, collapse = "+")))) 
+    }
+    else nrand <- 0
 	
 	#check data names
     mf <- model.frame(formula = formula, data = dat, na.action = na.fail)
@@ -173,12 +175,13 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
         {
             randnames <- colnames(mf_rand)
             sdnames <- paste0(randnames, "sd")
-            randnames <- sapply(1:length(randindexes), function(i, x, nam)
+            randnames <- lapply(1:length(randindexes), function(i, x, nam)
             {
                 x <- x[[i]]
                 nam <- nam[i]
                 paste0(nam, 1:length(x))
             }, x = randindexes, nam = randnames)
+            randnames <- do.call("c", randnames)
                 
             colnames(model.sim[[j]]) <- c(varnames, sdnames, randnames, "logposterior")
         }
