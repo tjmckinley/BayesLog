@@ -148,7 +148,7 @@ bayesLog <- function(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA
         inits <- list(NULL)
         for(j in 1:nchains)
         {
-            inits[[j]] <- rnorm(npars, 0, 10)
+            inits[[j]] <- rnorm(npars, 0, 1)
             if(nrand > 0) inits[[j]][(npars - (nrand - 1)):npars] <- runif(nrand, 0, prior_rand_ub)
         }
     }

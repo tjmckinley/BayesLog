@@ -2,10 +2,10 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, arma::mat priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, arma::imat data_rand)
+arma::mat logisticMH (arma::mat dataR, arma::vec nsamplesR, arma::vec ini_pars, arma::mat priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, arma::imat data_randR)
 {
-    // 'data' is a matrix of data with the first column equal to the response variable
-    // 'nsamples' corresponds to aggregated counts for each row of 'data'
+    // 'dataR' is a matrix of data with the first column equal to the response variable
+    // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
     // 'nrandint' corresponds to number of random intercept terms
     // 'ini_pars' is a vector of initial values for the unknown parameters
     // 'priors' is an (npars x 2) matrix containing the mean and var for Normal priors
@@ -17,7 +17,7 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     // 'niterdim' is the iteration at which the diminishing adaptation component kicks in
     // 'nrand' is number of random effect terms
     // 'randindexesL' is a list of matrices of indexes for referencing random effects terms
-    // 'data_rand' is matrix of data corresponding to random effect terms
+    // 'data_randR' is matrix of data corresponding to random effect terms
     
     //initialise indexing variables
     int i, j, k, m;
@@ -30,13 +30,13 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     int npars = ini_pars.size();
     
     //set terms for parallelising code
-    arma::vec logL(data.n_rows);
+    arma::vec logL(dataR.n_rows);
     
     //print runtime information to the screen    
     i = 0;
-    for(j = 0; j < nsamples.size(); j++) i += nsamples[j];
+    for(j = 0; j < nsamplesR.size(); j++) i += nsamplesR[j];
     Rprintf("\nNumber of samples in data set = %d\n", i);
-    Rprintf("Number of unique samples in data set = %d\n", data.n_rows);
+    Rprintf("Number of unique samples in data set = %d\n", dataR.n_rows);
     
     Rprintf("\nRun time information printed to screen every %d iterations\n", nprintsum);
     Rprintf("Number of iterations = %d\n", niter);
@@ -50,6 +50,20 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     //print prior information to screen
     Rprintf("\nPriors: mean = %f variance = %f\n", priors(0, 0), priors(0, 1));
     if(nrand > 0) Rprintf("Priors RE: lower = %f upper = %f\n", priors(npars - 1, 0), priors(npars - 1, 1));
+    
+    //convert Rcpp objects to native C objects for fast processing
+    int data_nrows = dataR.n_rows;
+    int data_ncols = dataR.n_cols;
+    double **data = (double **) R_alloc (data_nrows, sizeof(double *));
+    for(i = 0; i < data_nrows; i++) data[i] = (double *) R_alloc (data_ncols, sizeof(double));
+    for(i = 0; i < data_nrows; i++) for(j = 0; j < data_ncols; j++) data[i][j] = dataR(i, j);
+    
+    double *nsamples = (double *) R_alloc (data_nrows, sizeof(double));
+    for(i = 0; i < data_nrows; i++) nsamples[i] = nsamplesR(i);
+    
+    int **data_rand = (int **) R_alloc (data_nrows, sizeof(int *));
+    for(i = 0; i < data_nrows; i++) data_rand[i] = (int *) R_alloc (nrand, sizeof(int));
+    for(i = 0; i < data_nrows; i++) for(j = 0; j < nrand; j++) data_rand[i][j] = data_randR(i, j);
     
     //extract indexes from list object for random effect terms
     int *nrandlevels = (int *) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int));
@@ -97,9 +111,13 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     output.zeros();    
     
     // initialise chain and set up vector to hold proposals
-    arma::vec pars(npars);
-    arma::vec pars_prop(npars);
-    pars.zeros(); pars_prop.zeros();
+    double *pars = (double *) R_alloc (npars, sizeof(double));
+    double *pars_prop = (double *) R_alloc (npars, sizeof(double));
+    for(i = 0; i < npars; i++)
+    {
+        pars[i] = 0.0;
+        pars_prop[i] = 0.0;
+    }
     
     double **rand = (double **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(double *));
     double **rand_prop = (double **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(double *));
@@ -121,25 +139,25 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     double LL_curr, LL_prop, acc_curr, acc_prop, acc;
     
     //set initial values
-    for(i = 0; i < npars; i++) pars(i) = ini_pars(i);
+    for(i = 0; i < npars; i++) pars[i] = ini_pars(i);
     //check the initial values produce a finite log-posterior
-    LL_curr = loglike(pars, data, nsamples, nrand, rand, data_rand, logL);
+    LL_curr = loglike(pars, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
     acc_curr = LL_curr;
     //add hierarchical terms
     if(nrand > 0)
     {
         for(j = 0; j < nrand; j++)
         {
-            for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars(j + npars - nrand)), 1);
+            for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars[j + npars - nrand]), 1);
         }
     }
     //add priors for regression parameters
-    for(j = 0; j < (npars - nrand); j++) acc_curr += R::dnorm(pars(j), priors(j, 0), sqrt(priors(j, 1)), 1);
-    if(nrand > 0) for(j = (npars - nrand); j < npars; j++) acc_curr += R::dunif(pars(j), priors(j, 0), priors(j, 1), 1);
+    for(j = 0; j < (npars - nrand); j++) acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(priors(j, 1)), 1);
+    if(nrand > 0) for(j = (npars - nrand); j < npars; j++) acc_curr += R::dunif(pars[j], priors(j, 0), priors(j, 1), 1);
     
     //print initial values to screen
     Rprintf("\nInitial values:\n");
-    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars(j));
+    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
     Rprintf("\n");
     
     //check viability
@@ -194,7 +212,7 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     double minacc_rand, maxacc_rand;
         
     //set proposals 
-    for(k = 0; k < npars; k++) pars_prop(k) = pars(k);
+    for(k = 0; k < npars; k++) pars_prop[k] = pars[k];
     if(nrand > 0) for(k = 0; k < nrand; k++) for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
     
     //initialise timer
@@ -213,17 +231,17 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
         for(k = 0; k < (npars - nrand); k++)
         {
             // propose new parameter value
-            if(R::runif(0.0, 1.0) < scale) pars_prop(k) = R::rnorm(pars(k), 0.1);
-            else pars_prop(k) = R::rnorm(pars(k), propsd(k));
+            if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
+            else pars_prop[k] = R::rnorm(pars[k], propsd(k));
             nattempt(k)++;
             
             // calculate log-likelihood
-            LL_prop = loglike(pars_prop, data, nsamples, nrand, rand, data_rand, logL);
+            LL_prop = loglike(pars_prop, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
             acc_prop = LL_prop;
             acc_curr = LL_curr;
             //adjust for prior
-            acc_curr += R::dnorm(pars(k), priors(k, 0), sqrt(priors(k, 1)), 1);
-            acc_prop += R::dnorm(pars_prop(k), priors(k, 0), sqrt(priors(k, 1)), 1);
+            acc_curr += R::dnorm(pars[k], priors(k, 0), sqrt(priors(k, 1)), 1);
+            acc_prop += R::dnorm(pars_prop[k], priors(k, 0), sqrt(priors(k, 1)), 1);
             acc = acc_prop - acc_curr;
             //proposals cancel
             
@@ -232,13 +250,13 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
             {
                 if(log(R::runif(0.0, 1.0)) < acc)
                 {
-                    pars(k) = pars_prop(k);
+                    pars[k] = pars_prop[k];
                     nacc(k)++;
                     LL_curr = LL_prop;
                 }
-                else pars_prop(k) = pars(k);
+                else pars_prop[k] = pars[k];
             }
-            else pars_prop(k) = pars(k);
+            else pars_prop[k] = pars[k];
         }
         
         if(nrand > 0)
@@ -247,18 +265,18 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
             for(k = (npars - nrand); k < npars; k++)
             {
                 // propose new parameter value
-                if(R::runif(0.0, 1.0) < scale) pars_prop(k) = R::rnorm(pars(k), 0.1);
-                else pars_prop(k) = R::rnorm(pars(k), propsd(k));
+                if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
+                else pars_prop[k] = R::rnorm(pars[k], propsd(k));
                 nattempt(k)++;
                 
-                if(pars_prop(k) > priors(k, 0) && pars_prop(k) < priors(k, 1))
+                if(pars_prop[k] > priors(k, 0) && pars_prop[k] < priors(k, 1))
                 {
                     //add hierarchical terms
                     LL_prop = 0.0;
                     for(j = 0; j < nrandlevels[k - (npars - nrand)]; j++)
                     {
-                        LL_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars_prop(k)), 1);
-                        LL_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars(k)), 1);
+                        LL_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars_prop[k]), 1);
+                        LL_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars[k]), 1);
                     }
                     
                     //priors and proposals cancel
@@ -269,14 +287,14 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
                     {
                         if(log(R::runif(0.0, 1.0)) < acc)
                         {
-                            pars(k) = pars_prop(k);
+                            pars[k] = pars_prop[k];
                             nacc(k)++;
                         }
-                        else pars_prop(k) = pars(k);
+                        else pars_prop[k] = pars[k];
                     }
-                    else pars_prop(k) = pars(k);
+                    else pars_prop[k] = pars[k];
                 }
-                else pars_prop(k) = pars(k);
+                else pars_prop[k] = pars[k];
             }
             //update individual hierarchical components
             for(k = 0; k < nrand; k++)
@@ -289,12 +307,12 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
                     nattempt_rand[k][j]++;
                     
                     //likelihood contributions
-                    acc_prop = loglike_sub(pars, data, nsamples, nrand, rand_prop, data_rand, randindexes, nrandindexes, k, j, logL);
-                    acc_curr = loglike_sub(pars, data, nsamples, nrand, rand, data_rand, randindexes, nrandindexes, k, j, logL);
+                    acc_prop = loglike_sub(pars, nrandindexes[k][j], data_ncols, data, nsamples, nrand, rand_prop, data_rand, randindexes, nrandindexes, k, j, logL);
+                    acc_curr = loglike_sub(pars, nrandindexes[k][j], data_ncols, data, nsamples, nrand, rand, data_rand, randindexes, nrandindexes, k, j, logL);
                     
                     //hierarchical terms
-                    acc_prop += R::dnorm(rand_prop[k][j], 0.0, sqrt(pars(k + npars - nrand)), 1);
-                    acc_curr += R::dnorm(rand[k][j], 0.0, sqrt(pars(k + npars - nrand)), 1);
+                    acc_prop += R::dnorm(rand_prop[k][j], 0.0, sqrt(pars[k + npars - nrand]), 1);
+                    acc_curr += R::dnorm(rand[k][j], 0.0, sqrt(pars[k + npars - nrand]), 1);
                     
                     //proposals cancel
                     
@@ -315,22 +333,22 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
         }
         
         //calculate the posterior for clarity
-        LL_curr = loglike(pars, data, nsamples, nrand, rand, data_rand, logL);
+        LL_curr = loglike(pars, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
         acc_curr = LL_curr;
         //add hierarchical terms
         if(nrand > 0)
         {
             for(j = 0; j < nrand; j++)
             {
-                for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars(j + npars - nrand)), 1);
+                for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars[j + npars - nrand]), 1);
             }
         }
         //add priors for regression parameters
-        for(j = 0; j < (npars - nrand); j++) acc_curr += R::dnorm(pars(j), priors(j, 0), sqrt(priors(j, 1)), 1);
-        if(nrand > 0) for(j = (npars - nrand); j < npars; j++) acc_curr += R::dunif(pars(j), priors(j, 0), priors(j, 1), 1);
+        for(j = 0; j < (npars - nrand); j++) acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(priors(j, 1)), 1);
+        if(nrand > 0) for(j = (npars - nrand); j < npars; j++) acc_curr += R::dunif(pars[j], priors(j, 0), priors(j, 1), 1);
         
         // save current value of chain into output matrix
-        for(j = 0; j < npars; j++) output(i, j) = pars(j);
+        for(j = 0; j < npars; j++) output(i, j) = pars[j];
         for(j = 0; j < nrand; j++)
         {
             for(k = 0; k < nrandlevels[j]; k++) output(i, npars + cumrandlevels[j] + k) = rand[j][k];
@@ -392,7 +410,11 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
                         maxacc_rand = (maxacc_rand > tempacc ? maxacc_rand:tempacc);
                     }
                 }
-                Rprintf("i = %d minacc = %f maxacc = %f minacc_rand = %f maxacc_rand = %f\n", i + 1, minacc, maxacc, minacc_rand, maxacc_rand);
+                timer.step("");
+                NumericVector res(timer);
+                Rprintf("i = %d minacc = %f maxacc = %f minacc_rand = %f maxacc_rand = %f time = %f\n", i + 1, minacc, maxacc, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                prev_time = res[timer_cnt] / 1e9;
+                timer_cnt++;
             }
             else
             {
