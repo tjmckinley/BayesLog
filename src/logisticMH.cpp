@@ -197,6 +197,11 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
     for(k = 0; k < npars; k++) pars_prop(k) = pars(k);
     if(nrand > 0) for(k = 0; k < nrand; k++) for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
     
+    //initialise timer
+    Timer timer;
+    int timer_cnt = 0;
+    double prev_time = 0.0;
+    
     // run chain
     Rprintf("Starting run:\n");
     for(i = 0; i < niter; i++)
@@ -389,7 +394,14 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
                 }
                 Rprintf("i = %d minacc = %f maxacc = %f minacc_rand = %f maxacc_rand = %f\n", i + 1, minacc, maxacc, minacc_rand, maxacc_rand);
             }
-            else Rprintf("i = %d minacc = %f maxacc = %f\n", i + 1, minacc, maxacc);
+            else
+            {
+                timer.step("");
+                NumericVector res(timer);
+                Rprintf("i = %d minacc = %f maxacc = %f time = %f\n", i + 1, minacc, maxacc, (res[timer_cnt] / 1e9) - prev_time);
+                prev_time = res[timer_cnt] / 1e9;
+                timer_cnt++;
+            }
                
             //reset counters 
             for(j = 0; j < npars; j++)
@@ -412,6 +424,10 @@ arma::mat logisticMH (arma::mat data, arma::vec nsamples, arma::vec ini_pars, ar
             }
         }
     }
+    
+    timer.step("");
+    NumericVector res(timer);
+    Rprintf("Total run time = %f\n", res[timer_cnt] / 1e9);
     
     //return output
     return(output);

@@ -7,6 +7,8 @@
 #include <omp.h>
 // [[Rcpp::plugins(openmp)]]
 
+#include <Rcpp/Benchmark/Timer.h>
+
 using namespace Rcpp;
 
 // function for calculating the log-likelihood
