@@ -30,7 +30,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     int npars = ini_pars.size();
     
     //set terms for parallelising code
-    NumericVector logL(dataR.nrow());
+    double *logL = (double *) R_alloc(dataR.nrow(), sizeof(double));
+    for(i = 0; i < dataR.nrow(); i++) logL[i] = 0.0;
     
     //print runtime information to the screen    
     i = 0;

@@ -1,7 +1,7 @@
 #include "functions.hpp"
 
 // function for calculating the log-likelihood
-double loglike (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, NumericVector logL)
+double loglike (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, double *logL)
 {
     //'pars' is a vector of regression parameters
     //'nrow' and 'ncol' are sizes of data set
@@ -34,15 +34,15 @@ double loglike (double *pars, int nrow, int ncol, double **data, double *nsample
         nu = exp(nu) / (1.0 + exp(nu));
         //calculate log-likelihood contribution
         nu = (data[i][0] == 0 ? (1.0 - nu):nu);
-        logL(i) = nsamples[i] * log(nu);
+        logL[i] = nsamples[i] * log(nu);
     }
     #pragma omp parallel for reduction (+:LL)
-    for(i = 0; i < nrow; i++) LL += logL(i);
+    for(i = 0; i < nrow; i++) LL += logL[i];
     return LL;
 }
 
 // function for calculating a subset of the log-likelihood
-double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, int ***randindexes, int **nrandindexes, int randi, int randj, NumericVector logL)
+double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, int ***randindexes, int **nrandindexes, int randi, int randj, double *logL)
 {
     //'pars' is a vector of regression parameters
     //'data' is matrix of data with response in first column
@@ -76,9 +76,9 @@ double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsa
         nu = exp(nu) / (1.0 + exp(nu));
         //calculate log-likelihood contribution
         nu = (data[i][0] == 0 ? (1.0 - nu):nu);
-        logL(k) = nsamples[i] * log(nu);
+        logL[k] = nsamples[i] * log(nu);
     }
     #pragma omp parallel for reduction (+:LL)
-    for(i = 0; i < nrow; i++) LL += logL(i);
+    for(i = 0; i < nrow; i++) LL += logL[i];
     return LL;
 }
