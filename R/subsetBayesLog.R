@@ -25,13 +25,29 @@
     stopifnot(class(x) == "bayesLog")
     
     #extract 'mcmc' object
-    y <- as.matrix(x$post)
+    y <- x$post
     
     #extract subset
-    y <- y[i, j, drop = F]
+    if(is.mcmc.list(y))
+    {
+        y <- lapply(y, as.matrix)
+        for(k in 1:length(y))
+        {
+            y[[k]] <- y[[k]][i, j, drop = F]
+        }
+        y <- lapply(y, as.mcmc)
+        y <- as.mcmc.list(y)
+    }
+    else y <- as.mcmc(y[i, j, drop = F])
     
     #return bayesLog object
-    x$post <- as.mcmc(y)
+    x$post <- y
+    
+    if(!missing(j))
+    {
+        #reset hypervariables to prevent problems with plotting
+        x$nrand <- 0
+    }
     x
 }
 
