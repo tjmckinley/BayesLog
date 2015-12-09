@@ -5,8 +5,9 @@
 \title{Fits Bayesian logistic regression model}
 \usage{
 bayesLog(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
-  nchains = 2, niter = 2e+05, scale = 0.05, nadapt = 100,
-  nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
+  nchains = 2, niter = 2e+05, ninitial = 100, scale = 0.05,
+  nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000,
+  blocks = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
@@ -21,6 +22,8 @@ parameters. If missing then these are simulated.}
 \item{nchains}{Number of chains to run.}
 
 \item{niter}{Number of iterations to run per chain.}
+
+\item{ninitial}{Number of iterations before adaptive proposal kicks in}
 
 \item{scale}{Mixing proportion for adapt proposal.}
 

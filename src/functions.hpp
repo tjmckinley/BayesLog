@@ -24,9 +24,9 @@ double loglike_sub (double *pars, int nrow, int ncol, double **data, double *nsa
 double adapt_scale(int nacc, int niter, double desacc, double propscale, int totiter, double maxscale, double niterdim);
 
 //function to calculate means and covariance matrices for adaptive MCMC
-void adapt_update(int i, int ninitial, int niter, int npars, double adaptscale, arma::vec *tempmn, arma::mat *meanmat, arma::mat *meanmat1, NumericMatrix posterior, arma::mat *propcov, int subrow, arma::ivec *elements);
+void adapt_update(int i, int ninitial, int niter, int npars, arma::vec *tempmn, arma::mat *meanmat, arma::mat *meanmat1, NumericMatrix posterior, arma::mat *propcov, int subrow, arma::ivec *elements);
 
 // [[Rcpp::export]]
-NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini);
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini);
 
 #endif // __FUNCTIONS__

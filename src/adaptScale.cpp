@@ -30,7 +30,7 @@ double adapt_scale(int nacc, int niter, double desacc, double propscale, int tot
 }
 
 //function to calculate means and covariance matrices for adaptive MCMC
-void adapt_update(int i, int ninitial, int niter, int npars, double adaptscale, arma::vec *tempmn, arma::mat *meanmat, arma::mat *meanmat1, NumericMatrix posterior, arma::mat *propcov, int subrow, arma::ivec *elements)
+void adapt_update(int i, int ninitial, int niter, int npars, arma::vec *tempmn, arma::mat *meanmat, arma::mat *meanmat1, NumericMatrix posterior, arma::mat *propcov, int subrow, arma::ivec *elements)
 {
     int j, k, m;
 
@@ -57,11 +57,9 @@ void adapt_update(int i, int ninitial, int niter, int npars, double adaptscale, 
                 (*propcov)(j, k) = (*propcov)(j, k) / ((double) i);
             }
         }
-        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) *= adaptscale;
     }
     else
     {
-        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) /= adaptscale;
         //recursively update mean and covariance matrix
         for(j = 0; j < npars; j++) (*tempmn)(j) = ((*tempmn)(j) * i + posterior(subrow, (*elements)(j))) / ((double) i + 1);
         //new matrix of product of means
@@ -74,7 +72,6 @@ void adapt_update(int i, int ninitial, int niter, int npars, double adaptscale, 
             }
         }
         for(j = 0; j < npars; j++) for(k = 0; k < npars; k++) (*meanmat)(j, k) = (*meanmat1)(j, k);
-        for(k = 0; k < npars; k++) for(j = 0; j < npars; j++) (*propcov)(k, j) *= adaptscale;
     }
 //    if(npars > 1 && (i + 1) % 100 == 0)
 //    {

@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini)
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini)
 {
     // 'dataR' is a matrix of data with the first column equal to the response variable
     // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
@@ -477,29 +477,29 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         }  
                 
         //update var-cov matrix for adaptive proposal
- 		if((i + 1) >= 100)
+ 		if((i + 1) >= ninitial)
  		{
  		    for(m = 0; m < nblocks; m++)
  		    {
- 		        if(nblock(m) > 1) adapt_update(i, 100, niter, nblock(m), 1.0, &(tempmn(m)), &(meanmat(m)), &(meanmat1(m)), output, &(propcov(m)), i, &(block(m)));
- 		        propcov_temp(m) = propcov(m) * propsd[block(m)(0)];
- 		        propcov_chol(m) = chol(propcov_temp(m), "lower");
- 		        
-//                if((i + 1) % 100 == 0)
-//                {
-//                    Rprintf("\nPropcov:\n");
-//                    for(k = 0; k < npars; k++)
+ 		        if(nblock(m) > 1) 
+ 		        {
+ 		            adapt_update(i, ninitial, niter, nblock(m), &(tempmn(m)), &(meanmat(m)), &(meanmat1(m)), output, &(propcov(m)), i, &(block(m)));
+//                    if((i + 1) % 100 == 0)
 //                    {
-//                        for(j = 0; j < npars; j++) Rprintf("%f ", propcov(m)(k, j));
-//                        Rprintf("\n");
+//                        Rprintf("\nPropcov:\n");
+//                        for(k = 0; k < nblock(m); k++)
+//                        {
+//                            for(j = 0; j < nblock(m); j++) Rprintf("%f ", propcov(m)(k, j));
+//                            Rprintf("\n");
+//                        }
+    //                    Rprintf("\nPropcov_t:\n");
+    //                    for(k = 0; k < npars; k++)
+    //                    {
+    //                        for(j = 0; j < npars; j++) Rprintf("%f ", propcov_temp(m)(k, j));
+    //                        Rprintf("\n");
+    //                    }
 //                    }
-//                    Rprintf("\nPropcov_t:\n");
-//                    for(k = 0; k < npars; k++)
-//                    {
-//                        for(j = 0; j < npars; j++) Rprintf("%f ", propcov_temp(m)(k, j));
-//                        Rprintf("\n");
-//                    }
-//                }
+                }
  		    }
  		}
         

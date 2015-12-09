@@ -11,6 +11,7 @@
 #' @param priorvar      A numeric specifying the prior variance for all regression terms.
 #' @param nchains       Number of chains to run.
 #' @param niter         Number of iterations to run per chain.
+#' @param ninitial      Number of iterations before adaptive proposal kicks in
 #' @param scale         Mixing proportion for adapt proposal.
 #' @param nadapt        Number of iterations between each adaptive proposal update.
 #' @param nprintsum     how often to print run time information to the screen
@@ -31,7 +32,7 @@
 #' }
 #'
 
-bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
+bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
@@ -143,7 +144,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1))
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1))
         #set variable names
         if(nrand > 0)
         {
