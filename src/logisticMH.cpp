@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR)
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini)
 {
     // 'dataR' is a matrix of data with the first column equal to the response variable
     // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
@@ -20,6 +20,9 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     // 'data_randR' is matrix of data corresponding to random effect terms
     // 'nblock' is vector of block lengths
     // 'blockR' is list of indexes for block updating
+    // 'printini' is a binary indicator. If equal to 1 then prints setup information
+    //      else it just prints chain information (suppresses extraneous information
+    //      when running multiple chains)
     
     //initialise indexing variables
     int i, j, k, m;
@@ -38,21 +41,24 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     //print runtime information to the screen    
     i = 0;
     for(j = 0; j < nsamplesR.size(); j++) i += nsamplesR[j];
-    Rprintf("\nNumber of samples in data set = %d\n", i);
-    Rprintf("Number of unique samples in data set = %d\n", dataR.nrow());
-    
-    Rprintf("\nRun time information printed to screen every %d iterations\n", nprintsum);
-    Rprintf("Number of iterations = %d\n", niter);
-    Rprintf("Scale for adaptive proposal = %f\n", scale);
-    Rprintf("Number of regression parameters = %d\n", npars);
-    if(nrand > 0) Rprintf("Number of random intercepts = %d\n", nrand);
-    Rprintf("Adapt every %d iterations\n", nadapt);
-    Rprintf("Max scale for adapting = %f\n", maxscale);
-    Rprintf("%d iterations before diminishing adaptation kicks in\n", (int) niterdim);
-    
-    //print prior information to screen
-    Rprintf("\nPriors: mean = %f variance = %f\n", priors(0, 0), priors(0, 1));
-    if(nrand > 0) Rprintf("Priors RE: lower = %f upper = %f\n", priors(npars - 1, 0), priors(npars - 1, 1));
+    if(printini == 1)
+    {
+        Rprintf("\nNumber of samples in data set = %d\n", i);
+        Rprintf("Number of unique samples in data set = %d\n", dataR.nrow());
+        
+        Rprintf("\nRun time information printed to screen every %d iterations\n", nprintsum);
+        Rprintf("Number of iterations = %d\n", niter);
+        Rprintf("Scale for adaptive proposal = %f\n", scale);
+        Rprintf("Number of regression parameters = %d\n", npars);
+        if(nrand > 0) Rprintf("Number of random intercepts = %d\n", nrand);
+        Rprintf("Adapt every %d iterations\n", nadapt);
+        Rprintf("Max scale for adapting = %f\n", maxscale);
+        Rprintf("%d iterations before diminishing adaptation kicks in\n", (int) niterdim);
+        
+        //print prior information to screen
+        Rprintf("\nPriors: mean = %f variance = %f\n", priors(0, 0), priors(0, 1));
+        if(nrand > 0) Rprintf("Priors RE: lower = %f upper = %f\n", priors(npars - 1, 0), priors(npars - 1, 1));
+    }
     
     //convert Rcpp objects to native C objects for fast processing
     int data_nrows = dataR.nrow();
@@ -157,10 +163,10 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     for(j = 0; j < (npars - nrand); j++) acc_curr += R::dnorm(pars[j], priors(j, 0), sqrt(priors(j, 1)), 1);
     if(nrand > 0) for(j = (npars - nrand); j < npars; j++) acc_curr += R::dunif(pars[j], priors(j, 0), priors(j, 1), 1);
     
-    //print initial values to screen
-    Rprintf("\nInitial values:\n");
-    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
-    Rprintf("\n");
+//    //print initial values to screen
+//    Rprintf("\nInitial values:\n");
+//    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
+//    Rprintf("\n");
     
     //check viability
     if(R_finite(acc_curr) == 0) Rcpp::stop("Initial values are not viable: LL = %f acc = %f", LL_curr, acc_curr);

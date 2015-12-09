@@ -143,7 +143,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks)
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1))
         #set variable names
         if(nrand > 0)
         {
