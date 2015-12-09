@@ -18,8 +18,8 @@ crossVal <- function(data, model, K = 5, plot = TRUE)
 {
     #check inputs
     stopifnot(!missing(data) & !missing(model))
-    stopifnot(is.matrix(data))
-    stopifnot(class(model) == "glm" | class(model) == "lm")
+    stopifnot(is.data.frame(data))
+#    stopifnot(class(model) == "glm" | class(model) == "lm")
     stopifnot(is.numeric(K) & length(K) == 1)
     stopifnot(K > 0 & abs(floor(K) - K) < .Machine$double.eps^0.5)
     stopifnot(is.logical(plot) & length(plot) == 1)
