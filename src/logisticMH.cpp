@@ -284,7 +284,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     for(j = 0; j < nblock(m); j++)
                     {
                         z2(m)(j) = 0.0;
-                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(j) * propcovI_chol(m)(j, k);
+                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(k) * propcovI_chol(m)(j, k);
                         pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
                     }
                 }
@@ -294,7 +294,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     for(j = 0; j < nblock(m); j++)
                     {
                         z2(m)(j) = 0.0;
-                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(j) * propcov_chol(m)(j, k);
+                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(k) * propcov_chol(m)(j, k);
                         pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
                     }
                 }
