@@ -19,7 +19,16 @@
 #' @param blocks        a list of integer vectors defining parameters to update in blocks.
 #' Missing parameters are filled in automatically as componentwise updates.
 #'
-#' @return An object of class \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.
+#' @return An object of class \code{bayesLog}, which is basically a list
+#' including a subset of elements:
+#' \itemize{
+#' \item{post:}{ an \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}} containing the posterior samples.}
+#' \item{formula:}{ a \code{formula} used to define the model.}
+#' \item{data:}{ a \code{data.frame} containing the data used to fit the model.}
+#' \item{nregpars:}{ a scalar containing the number of regression parameters.}
+#' \item{nrand:}{ a scalar containing the number of random effect variables.}
+#' \item{nrandlevels:}{ a \code{numeric} containing the number of levels of each random effect.}
+#' }
 #'
 
 bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
@@ -160,7 +169,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	else model.sim <- model.sim[[1]]
 	
 	#append data and formula to object
-	model.sim <- list(post = model.sim, formula = origformula, data = origdat)
+	model.sim <- list(post = model.sim, formula = origformula, data = origdat, nregpars = length(varnames), nrand = nrand, nrandlevels = sapply(randindexes, length))
 	
 	#set class
 	class(model.sim) <- "bayesLog"

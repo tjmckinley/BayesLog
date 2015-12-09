@@ -4,21 +4,17 @@
 \alias{bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
-bayesLog(formula, dat, gen_inits = TRUE, inits = NA, inits_rand = NA,
-  priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 2e+05,
-  scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2,
-  niterdim = 1000, blocks = NA)
+bayesLog(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
+  nchains = 2, niter = 2e+05, scale = 0.05, nadapt = 100,
+  nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
 
 \item{dat}{Data frame containing data.}
 
-\item{gen_inits}{Logical stating whether initial values are to be generated at random or
-input by the user. If the latter then \code{inits}
-must be supplied.}
-
-\item{inits}{List containing vectors of initial values for the regression parameters.}
+\item{inits}{List containing vectors of initial values for the regression
+parameters. If missing then these are simulated.}
 
 \item{priorvar}{A numeric specifying the prior variance for all regression terms.}
 
@@ -40,7 +36,16 @@ must be supplied.}
 Missing parameters are filled in automatically as componentwise updates.}
 }
 \value{
-An object of class \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}}.
+An object of class \code{bayesLog}, which is basically a list
+including a subset of elements:
+\itemize{
+\item{post:}{ an \code{\link[coda]{mcmc}} or \code{\link[coda]{mcmc.list}} containing the posterior samples.}
+\item{formula:}{ a \code{formula} used to define the model.}
+\item{data:}{ a \code{data.frame} containing the data used to fit the model.}
+\item{nregpars:}{ a scalar containing the number of regression parameters.}
+\item{nrand:}{ a scalar containing the number of random effect variables.}
+\item{nrandlevels:}{ a \code{numeric} containing the number of levels of each random effect.}
+}
 }
 \description{
 Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
