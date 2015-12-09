@@ -74,6 +74,6 @@ predict.bayesLog <- function(object, newdata, ...)
     pred <- exp(pred) / (1 + exp(pred))
     
     #perform predictive sampling
-    pred <- apply(pred, 1, function(x) rbinom(1, size = 1, prob = x))
+    pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
     pred
 }
