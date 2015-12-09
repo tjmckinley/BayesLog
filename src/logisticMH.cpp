@@ -182,16 +182,13 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     //set up covariance matrices for block-updating if required
     int nblocks = nblock.size();
     arma::field<arma::ivec> block (nblocks);
-    arma::field<arma::vec> z1 (nblocks);
-    arma::field<arma::vec> z2 (nblocks);
     arma::field<arma::vec> tempmn (nblocks);
+    arma::field<arma::vec> pars_a (nblocks);
+    arma::field<arma::vec> pars_prop_a (nblocks);
     arma::field<arma::mat> meanmat (nblocks);
     arma::field<arma::mat> meanmat1 (nblocks);
     arma::field<arma::mat> propcov (nblocks);
     arma::field<arma::mat> propcovI (nblocks);
-    arma::field<arma::mat> propcov_chol (nblocks);
-    arma::field<arma::mat> propcov_temp (nblocks);
-    arma::field<arma::mat> propcovI_chol (nblocks);
     arma::vec tempv (1);
     arma::mat tempm (1, 1);
     for(m = 0; m < nblocks; m++)
@@ -204,9 +201,9 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         tempv.zeros();
         tempm.set_size(nblock(m), nblock(m));
         tempm.zeros();
-        z1(m) = tempv;
-        z2(m) = tempv;
         tempmn(m) = tempv;
+        pars_a(m) = tempv;
+        pars_prop_a(m) = tempv;
         meanmat(m) = tempm;
         meanmat1(m) = tempm;
         
@@ -214,9 +211,6 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         tempm.diag() *= pow(0.1, 2.0) / ((double) nblock(m));
         propcov(m) = tempm;
         propcovI(m) = tempm;
-        propcov_temp(m) = chol(tempm, "lower");
-        propcov_chol(m) = chol(tempm, "lower");
-        propcovI_chol(m) = chol(tempm, "lower");
     }
     
     //set up vectors to record acceptance rates
@@ -278,27 +272,14 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         {
             if(nblock(m) > 1)
             {
-                if(R::runif(0.0, 1.0) < scale)
+                for(j = 0; j < nblock(m); j++) pars_a(m)(j) = pars[block(m)(j)];
+                if(R::runif(0.0, 1.0) < scale) pars_prop_a(m) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars_a(m), propcovI(m)));
+                else pars_prop_a(m) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars_a(m), propcov(m) * propsd[block(m)(0)]));
+                for(j = 0; j < nblock(m); j++)
                 {
-                    for(j = 0; j < nblock(m); j++) z1(m)(j) = R::rnorm(0.0, 1.0);
-                    for(j = 0; j < nblock(m); j++)
-                    {
-                        z2(m)(j) = 0.0;
-                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(k) * propcovI_chol(m)(j, k);
-                        pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
-                    }
+                    nattempt[block(m)(j)]++;
+                    pars_prop[block(m)(j)] = pars_prop_a(m)(j);
                 }
-                else
-                {
-                    for(j = 0; j < nblock(m); j++) z1(m)(j) = R::rnorm(0.0, 1.0);
-                    for(j = 0; j < nblock(m); j++)
-                    {
-                        z2(m)(j) = 0.0;
-                        for(k = 0; k < nblock(m); k++) z2(m)(j) += z1(m)(k) * propcov_chol(m)(j, k);
-                        pars_prop[block(m)(j)] = z2(m)(j) + pars[block(m)(j)];
-                    }
-                }
-                for(j = 0; j < nblock(m); j++) nattempt[block(m)(j)]++;
             }
             else
             {

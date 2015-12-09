@@ -11,6 +11,9 @@
 
 using namespace Rcpp;
 
+// function for generating MVN RVs
+arma::mat mvrnormArma(int n, arma::vec mu, arma::mat sigma);
+
 // function for calculating the log-likelihood
 double loglike (double *pars, int nrow, int ncol, double **data, double *nsamples, int nrand, double **rand, int **data_rand, double *logL);
 
