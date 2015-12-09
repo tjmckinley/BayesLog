@@ -4,11 +4,23 @@
 \alias{plot.bayesLog}
 \title{Plots \code{bayesLog} objects}
 \usage{
-plot.bayesLog(x, ...)
+\method{plot}{bayesLog}(x, vars = c("all", "reg", "rand"), rand,
+  type = c("mcmc", "cat"), ...)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
+
+\item{vars}{a character specifying whether \code{"all"} parameters are to be plotted,
+or just the regression terms (\code{"reg"}), or one of the random effect terms (\code{"rand"}).
+If \code{vars = "rand"}, then the user must also specify a \code{rand} argument denoting
+which term to extract.}
+
+\item{rand}{an integer denoting which random effect to extract.}
+
+\item{type}{a character defining the type of plot to be drawn: \code{"mcmc"} denotes
+trace/density plots, whereas \code{"cat"} denotes a caterpillar plot, useful for
+comparing the random effects terms. (This latter plot can only be drawn for RE term currently.)}
 
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{plot.mcmc}}}
 }

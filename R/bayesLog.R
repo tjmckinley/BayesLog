@@ -169,7 +169,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	else model.sim <- model.sim[[1]]
 	
 	#append data and formula to object
-	model.sim <- list(post = model.sim, formula = origformula, data = origdat, nregpars = length(varnames), nrand = nrand, nrandlevels = sapply(randindexes, length))
+	model.sim <- list(post = model.sim, formula = origformula, data = origdat, nregpars = length(varnames), nrand = nrand, nrandlevels = sapply(randindexes, length), randnames = colnames(mf_rand))
 	
 	#set class
 	class(model.sim) <- "bayesLog"
