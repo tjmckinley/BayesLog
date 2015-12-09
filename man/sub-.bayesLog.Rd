@@ -4,13 +4,17 @@
 \alias{[.bayesLog}
 \title{Subset method for \code{bayesLog} objects}
 \usage{
-\method{[}{bayesLog}(x, ...)
+\method{[}{bayesLog}(x, i, j)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
 
-\item{\dots}{additional arguments to be passed to \code{\link[coda]{[.mcmc}}}
+\item{i}{the iterations to extract}
+
+\item{j}{the variables to extract}
+
+\item{\dots}{not used here}
 }
 \value{
 A \code{bayesLog} object
@@ -20,13 +24,14 @@ A \code{bayesLog} object
 }
 \details{
 Extracts a subset from a \code{\link{bayesLog}} object.
-Essentially a wrapper for \code{\link[coda]{[.mcmc}} functions from the \code{coda}
-package.
+Differs slightly from \code{\link[coda]{mcmc.subset}} in that it
+always returns a \code{bayesLog} object, but with the iterations
+reset (if \code{i} is not missing).
 }
 \author{
 TJ McKinley
 }
 \seealso{
-\code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{[.mcmc}}
+\code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}}
 }
 
