@@ -7,8 +7,8 @@
 using namespace Rcpp;
 
 // logisticMH
-NumericMatrix logisticMH(NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP) {
+NumericMatrix logisticMH(NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini);
+RcppExport SEXP BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP ninitialSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP, SEXP printiniSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
@@ -17,6 +17,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericVector >::type ini_pars(ini_parsSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type priors(priorsSEXP);
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
+    Rcpp::traits::input_parameter< int >::type ninitial(ninitialSEXP);
     Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< int >::type nadapt(nadaptSEXP);
     Rcpp::traits::input_parameter< int >::type nprintsum(nprintsumSEXP);
@@ -27,7 +28,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerMatrix >::type data_randR(data_randRSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type nblock(nblockSEXP);
     Rcpp::traits::input_parameter< List >::type blockR(blockRSEXP);
-    __result = Rcpp::wrap(logisticMH(dataR, nsamplesR, ini_pars, priors, niter, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR));
+    Rcpp::traits::input_parameter< int >::type printini(printiniSEXP);
+    __result = Rcpp::wrap(logisticMH(dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini));
     return __result;
 END_RCPP
 }
