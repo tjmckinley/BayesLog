@@ -557,7 +557,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             }
             if(nnoncentre > 0)
             {
-                for(m = 0; m < nnoncentre; m++) propsdnon[m] = adapt_scale(naccnon[m] - naccnon1[m], nattemptnon[m] - nattemptnon1[m], 0.44, propsdnon[m], (double) i + 1, maxscale, niterdim);
+                for(m = 0; m < nnoncentre; m++) propsdnon[m] = adapt_scale(naccnon[m] - naccnon1[m], nattemptnon[m] - nattemptnon1[m], 0.23, propsdnon[m], (double) i + 1, maxscale, niterdim);
             }
             if(nrand > 0)
             {
@@ -638,7 +638,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 maxaccnon = minaccnon;
                 for(m = 1; m < nnoncentre; m++)
                 {
-                    tempacc = ((double) nacc[m]) / ((double) nattempt[m]);
+                    tempacc = ((double) naccnon[m]) / ((double) nattemptnon[m]);
                     minaccnon = (minaccnon < tempacc ? minaccnon:tempacc);
                     maxaccnon = (maxaccnon > tempacc ? maxaccnon:tempacc);
                 }
