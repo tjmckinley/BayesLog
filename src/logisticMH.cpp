@@ -439,12 +439,12 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     if(log(R::runif(0.0, 1.0)) < acc)
                     {
                         naccnon[m]++;
-                        for(j = 1; j < npars; j++) if(noncentreint(m)(j) == 1) pars[j] = pars_prop[j];
+                        for(j = 0; j < npars; j++) pars[j] = pars_prop[j];
                         LL_curr = LL_prop;
                     }
-                    else for(j = 1; j < npars; j++) if(noncentreint(m)(j) == 1) pars_prop[j] = pars[j];
+                    else for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
                 }
-                else for(j = 1; j < npars; j++) if(noncentreint(m)(j) == 1) pars_prop[j] = pars[j];
+                else for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
             }
         }
         
