@@ -28,8 +28,12 @@ extractData <- function(formula, dat, agg = TRUE)
         
         #reformulate formula to treat extract from dataset in correct way
         formula <- terms(formula)
-        formula <- drop.terms(formula, match(rand, all.vars(formula)) - 1, keep.response = T)
-        formula <- reformulate(attr(formula, "term.labels"), all.vars(formula)[1])
+        if(any((match(rand, all.vars(formula)) - 1) == 1)) formula <- reformulate("1", all.vars(formula)[1])
+        else
+        {
+            formula <- drop.terms(formula, match(rand, all.vars(formula)) - 1, keep.response = T)
+            formula <- reformulate(attr(formula, "term.labels"), all.vars(formula)[1])
+        }
         formula <- update.formula(formula, formula(paste("~ . +", paste(rand, collapse = "+")))) 
     }
     else nrand <- 0
