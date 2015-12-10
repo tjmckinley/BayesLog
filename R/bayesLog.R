@@ -103,11 +103,14 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	{
         stopifnot(all(sapply(noncentreint, function(x) all(!is.na(x)) & all(x > 0) & all(abs(floor(x) - x) < .Machine$double.eps ^ 0.5) & all(x <= npars))))
         
-        temp <- rep(0, npars)
-        temp[unlist(noncentreint)] <- 1
-        noncentreint <- temp
+        noncentreint <- lapply(noncentreint, function(x)
+        {
+            temp <- rep(0, npars)
+            temp[x] <- 1
+            temp
+        })
     }
-    else noncentreint <- rep(0, npars)
+    else noncentreint <- list(rep(0, npars))
     
     #generate prior matrix
     priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
