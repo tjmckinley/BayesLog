@@ -171,9 +171,13 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     //check viability
     if(R_finite(acc_curr) == 0) Rcpp::stop("Initial values are not viable: LL = %f acc = %f", LL_curr, acc_curr);
     
+    //extract number of blocks
+    int nblocks = nblock.size();
+    
     //set up vectors for adaptive proposals
-    double *propsd = (double *) R_alloc (npars, sizeof(double));
-    for(i = 0; i < npars; i++) propsd[i] = 0.1;
+    double *propsd = (double *) R_alloc (nblocks + nrand, sizeof(double));
+    for(i = 0; i < (nblocks + nrand); i++) propsd[i] = 0.1;
+    for(i = 0; i < nblocks; i++) propsd[i] = (nblock(i) > 1 ? 1.0:0.1);
     
     double **propsd_rand = (double **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(double *));
     if(nrand > 0)
@@ -186,7 +190,6 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     }
     
     //set up covariance matrices for block-updating if required
-    int nblocks = nblock.size();
     arma::field<arma::ivec> block (nblocks);
     arma::field<arma::vec> tempmn (nblocks);
     arma::field<arma::vec> pars_a (nblocks);
@@ -220,11 +223,11 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     }
     
     //set up vectors to record acceptance rates
-    int *nacc = (int *) R_alloc (npars, sizeof(int));
-    int *nacc1 = (int *) R_alloc (npars, sizeof(int));
-    int *nattempt = (int *) R_alloc (npars, sizeof(int));
-    int *nattempt1 = (int *) R_alloc (npars, sizeof(int));
-    for(i = 0; i < npars; i++)
+    int *nacc = (int *) R_alloc (nblocks + nrand, sizeof(int));
+    int *nacc1 = (int *) R_alloc (nblocks + nrand, sizeof(int));
+    int *nattempt = (int *) R_alloc (nblocks + nrand, sizeof(int));
+    int *nattempt1 = (int *) R_alloc (nblocks + nrand, sizeof(int));
+    for(i = 0; i < (nblocks + nrand); i++)
     {
         nacc[i] = 0;
         nacc1[i] = 0;
@@ -280,10 +283,10 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 for(j = 0; j < nblock(m); j++) pars_a(m)(j) = pars[block(m)(j)];
                 if(R::runif(0.0, 1.0) < scale) pars_prop_a(m) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars_a(m), propcovI(m)));
-                else pars_prop_a(m) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars_a(m), propcov(m) * propsd[block(m)(0)]));
+                else pars_prop_a(m) = arma::conv_to<arma::vec>::from(mvrnormArma(1, pars_a(m), propcov(m) * propsd[m]));
                 for(j = 0; j < nblock(m); j++)
                 {
-                    nattempt[block(m)(j)]++;
+                    nattempt[m]++;
                     pars_prop[block(m)(j)] = pars_prop_a(m)(j);
                 }
             }
@@ -291,8 +294,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 // propose new parameter value
                 if(R::runif(0.0, 1.0) < scale) pars_prop[block(m)(0)] = R::rnorm(pars[block(m)(0)], 0.1);
-                else pars_prop[block(m)(0)] = R::rnorm(pars[block(m)(0)], propsd[block(m)(0)]);
-                nattempt[block(m)(0)]++;
+                else pars_prop[block(m)(0)] = R::rnorm(pars[block(m)(0)], propsd[m]);
+                nattempt[m]++;
             }
             
             
@@ -315,11 +318,11 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 if(log(R::runif(0.0, 1.0)) < acc)
                 {
+                    nacc[m]++;
                     for(j = 0; j < nblock(m); j++)
                     {
                         k = block(m)(j);
                         pars[k] = pars_prop[k];
-                        nacc[k]++;
                     }
                     LL_curr = LL_prop;
                 }
@@ -349,8 +352,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 // propose new parameter value
                 if(R::runif(0.0, 1.0) < scale) pars_prop[k] = R::rnorm(pars[k], 0.1);
-                else pars_prop[k] = R::rnorm(pars[k], propsd[k]);
-                nattempt[k]++;
+                else pars_prop[k] = R::rnorm(pars[k], propsd[k + nblocks - (npars - nrand)]);
+                nattempt[k + nblocks - (npars - nrand)]++;
                 
                 if(pars_prop[k] > priors(k, 0) && pars_prop[k] < priors(k, 1))
                 {
@@ -371,7 +374,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                         if(log(R::runif(0.0, 1.0)) < acc)
                         {
                             pars[k] = pars_prop[k];
-                            nacc[k]++;
+                            nacc[k + nblocks - (npars - nrand)]++;
                         }
                         else pars_prop[k] = pars[k];
                     }
@@ -441,13 +444,9 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         // record posterior mean and variances for use in proposals
         if ((i + 1) % nadapt == 0)
         {
-            for(m = 0; m < nblocks; m++)
+            for(m = 0; m < (nblocks + nrand); m++)
             {
-                for(k = 0; k < nblock(m); k++)
-                {
-                    j = block(m)(k);
-                    propsd[j] = adapt_scale(nacc[j] - nacc1[j], nattempt[j] - nattempt1[j], (nblock(m) > 1 ? 0.23:0.44), propsd[j], (double) i + 1, maxscale, niterdim);
-                }
+                propsd[m] = adapt_scale(nacc[m] - nacc1[m], nattempt[m] - nattempt1[m], (nblock(m) > 1 ? 0.23:0.44), propsd[m], (double) i + 1, maxscale, niterdim);
             }
             if(nrand > 0)
             {
@@ -458,7 +457,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             }
             
             //update counts
-            for(j = 0; j < npars; j++)
+            for(j = 0; j < (nblocks + nrand); j++)
             {
                 nacc1[j] = nacc[j];
                 nattempt1[j] = nattempt[j];
@@ -508,7 +507,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             // print some output to screen for book-keeping
             minacc = ((double) nacc[0]) / ((double) nattempt[0]);
             maxacc = minacc;
-            for(j = 1; j < npars; j++)
+            for(j = 1; j < (nblocks + nrand); j++)
             {
                 tempacc = ((double) nacc[j]) / ((double) nattempt[j]);
                 minacc = (minacc < tempacc ? minacc:tempacc);
@@ -543,7 +542,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             }
                
             //reset counters 
-            for(j = 0; j < npars; j++)
+            for(j = 0; j < (nblocks + nrand); j++)
             {
                 nacc[j] = 0; nacc1[j] = 0;
                 nattempt[j] = 0; nattempt1[j] = 0;

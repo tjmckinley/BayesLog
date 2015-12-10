@@ -81,10 +81,9 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	if(!is.na(blocks[1]))
 	{
         stopifnot(all(sapply(blocks, function(x) all(!is.na(x)) & all(x > 0) & all(abs(floor(x) - x) < .Machine$double.eps ^ 0.5) & all(x <= npars))))
-        stopifnot(length(unique(do.call("c", blocks))) == length(do.call("c", blocks)))
-        
+#        stopifnot(length(unique(do.call("c", blocks))) == length(do.call("c", blocks)))
         inds <- 1:npars
-        for(i in 1:length(blocks)) inds <- inds[-match(blocks[[i]], inds)]
+        inds <- inds[-match(unique(do.call("c", blocks)), inds)]
         if(length(inds) > 0)
         {
             inds <- as.list(inds)
