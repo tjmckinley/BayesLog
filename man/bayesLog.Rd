@@ -7,7 +7,7 @@
 bayesLog(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
   nchains = 2, niter = 2e+05, ninitial = 100, scale = 0.05,
   nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000,
-  blocks = NA)
+  blocks = NA, noncentreint = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}

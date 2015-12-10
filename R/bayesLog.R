@@ -32,7 +32,7 @@
 #' }
 #'
 
-bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA)
+bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
@@ -61,6 +61,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
     stopifnot(nprintsum %% nadapt == 0)
     
     stopifnot(is.list(blocks) | is.na(blocks[1]))
+    stopifnot(is.list(noncentreint) | is.na(noncentreint[1]))
     
     #save formula and data set for later output
     origformula <- formula
@@ -97,6 +98,16 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
         nblocks <- sapply(blocks, length)
     }
     blocks <- lapply(blocks, function(x) x - 1)
+    
+    if(!is.na(noncentreint[1]))
+	{
+        stopifnot(all(sapply(noncentreint, function(x) all(!is.na(x)) & all(x > 0) & all(abs(floor(x) - x) < .Machine$double.eps ^ 0.5) & all(x <= npars))))
+        
+        temp <- rep(0, npars)
+        temp[unlist(noncentreint)] <- 1
+        noncentreint <- temp
+    }
+    else noncentreint <- rep(0, npars)
     
     #generate prior matrix
     priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
@@ -143,7 +154,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1))
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1), noncentreint)
         #set variable names
         if(nrand > 0)
         {

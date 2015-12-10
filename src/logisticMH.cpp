@@ -2,7 +2,7 @@
 
 // a Metropolis-Hastings algorithm for fitting a logistic regression model
 
-NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini)
+NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini, IntegerVector noncentreint)
 {
     // 'dataR' is a matrix of data with the first column equal to the response variable
     // 'nsamplesR' corresponds to aggregated counts for each row of 'data'
@@ -23,6 +23,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     // 'printini' is a binary indicator. If equal to 1 then prints setup information
     //      else it just prints chain information (suppresses extraneous information
     //      when running multiple chains)
+    // 'noncentreint' is vector denoting which parameters to non-centre with respect
+    // to the intercept
     
     //initialise indexing variables
     int i, j, k, m;
@@ -171,6 +173,10 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     //check viability
     if(R_finite(acc_curr) == 0) Rcpp::stop("Initial values are not viable: LL = %f acc = %f", LL_curr, acc_curr);
     
+    //set number of non-centering components
+    int nnoncentre = 0;
+    for(i = 1; i < npars; i++) nnoncentre += noncentreint[i];
+    
     //extract number of blocks
     int nblocks = nblock.size();
     
@@ -178,6 +184,9 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     double *propsd = (double *) R_alloc (nblocks + nrand, sizeof(double));
     for(i = 0; i < (nblocks + nrand); i++) propsd[i] = 0.1;
     for(i = 0; i < nblocks; i++) propsd[i] = (nblock(i) > 1 ? 1.0:0.1);
+    
+    double *propsdnon = (double *) R_alloc (1, sizeof(double));
+    propsdnon[0] = 0.1;
     
     double **propsd_rand = (double **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(double *));
     if(nrand > 0)
@@ -235,6 +244,18 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         nattempt1[i] = 0;
     }
     
+    int *naccnon = (int *) R_alloc (1, sizeof(int));
+    int *naccnon1 = (int *) R_alloc (1, sizeof(int));
+    int *nattemptnon = (int *) R_alloc (1, sizeof(int));
+    int *nattemptnon1 = (int *) R_alloc (1, sizeof(int));
+    for(i = 0; i < 1; i++)
+    {
+        naccnon[i] = 0;
+        naccnon1[i] = 0;
+        nattemptnon[i] = 0;
+        nattemptnon1[i] = 0;
+    }
+    
     int **nacc_rand = (int **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int *));
     int **nattempt_rand = (int **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int *));
     int **nacc1_rand = (int **) R_alloc ((nrand == 0 ? 1:nrand), sizeof(int *));
@@ -258,6 +279,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     }
     
     double tempacc, minacc, maxacc;
+    double minaccnon, maxaccnon;
     double minacc_rand, maxacc_rand;
         
     //set proposals 
@@ -275,6 +297,10 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     {  
         //check for user interruptions
         if (i % 10 == 0) R_CheckUserInterrupt();
+        
+        ///////////////////////////////////////////////////////
+        //////////////      CENTRED UPDATES       /////////////
+        ///////////////////////////////////////////////////////
         
         //cycle through update blocks
         for(m = 0; m < nblocks; m++)
@@ -344,6 +370,67 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
             }
         }
+        
+        ///////////////////////////////////////////////////////
+        //////////////    NONCENTRED UPDATES      /////////////
+        ///////////////////////////////////////////////////////
+        
+        if(nnoncentre > 0)
+        {
+            // propose new parameter value
+            if(R::runif(0.0, 1.0) < scale) pars_prop[0] = R::rnorm(pars[0], 0.1);
+            else pars_prop[0] = R::rnorm(pars[0], propsdnon[0]);
+            nattemptnon[0]++;
+            
+            //update non-centred parameters
+            for(j = 1; j < npars; j++)
+            {
+                pars_prop[j] = pars[j];
+                
+                if(noncentreint[j] == 1)
+                {
+                    double temp = pars[0] + pars[j];
+                    pars_prop[j] = temp - pars_prop[0];
+                }
+            }
+            
+            // calculate log-likelihood
+            LL_prop = loglike(pars_prop, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
+            acc_prop = LL_prop;
+            acc_curr = LL_curr;
+            
+            //adjust for priors
+            acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
+            acc_prop += R::dnorm(pars_prop[0], priors(0, 0), sqrt(priors(0, 1)), 1);
+            for(j = 1; j < npars; j++)
+            {
+                if(noncentreint[j] == 1)
+                {
+                    acc_curr += R::dnorm(pars[j], pars[0] + priors(k, 0), sqrt(priors(k, 1)), 1);
+                    acc_prop += R::dnorm(pars_prop[k], pars_prop[0] + priors(k, 0), sqrt(priors(k, 1)), 1);
+                }
+            }
+            acc = acc_prop - acc_curr;
+            
+            //proposals cancel
+            
+            //accept/reject proposal
+            if(R_finite(acc) != 0)
+            {
+                if(log(R::runif(0.0, 1.0)) < acc)
+                {
+                    naccnon[0]++;
+                    for(j = 1; j < npars; j++) if(noncentreint[j] == 1) pars[j] = pars_prop[j];
+                    LL_curr = LL_prop;
+                }
+                else for(j = 1; j < npars; j++) if(noncentreint[j] == 1) pars_prop[j] = pars[j];
+            }
+            else for(j = 1; j < npars; j++) if(noncentreint[j] == 1) pars_prop[j] = pars[j];
+        }
+        
+        ///////////////////////////////////////////////////////
+        //////////////    RANDOM INTERCEPTS       /////////////
+        ///////////////////////////////////////////////////////
         
         if(nrand > 0)
         {
@@ -448,6 +535,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 propsd[m] = adapt_scale(nacc[m] - nacc1[m], nattempt[m] - nattempt1[m], (nblock(m) > 1 ? 0.23:0.44), propsd[m], (double) i + 1, maxscale, niterdim);
             }
+            propsdnon[0] = adapt_scale(naccnon[0] - naccnon1[0], nattemptnon[0] - nattemptnon1[0], 0.44, propsdnon[0], (double) i + 1, maxscale, niterdim);
             if(nrand > 0)
             {
                 for(j = 0; j < nrand; j++)
@@ -462,6 +550,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 nacc1[j] = nacc[j];
                 nattempt1[j] = nattempt[j];
             }
+            naccnon1[0] = naccnon[0];
+            nattemptnon1[0] = nattemptnon[0];
             if(nrand > 0)
             {
                 for(j = 0; j < nrand; j++)
@@ -513,6 +603,16 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 minacc = (minacc < tempacc ? minacc:tempacc);
                 maxacc = (maxacc > tempacc ? maxacc:tempacc);
             }
+            if(nnoncentre > 0)
+            {
+                minaccnon = ((double) naccnon[0]) / ((double) nattemptnon[0]);
+                maxaccnon = minaccnon;
+            }
+            else
+            {
+                minaccnon = 0.0;
+                maxaccnon = 0.0;
+            }
             if(nrand > 0)
             {
                 minacc_rand = ((double) nacc_rand[0][0]) / ((double) nattempt_rand[0][0]);
@@ -528,7 +628,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
                 timer.step("");
                 NumericVector res(timer);
-                Rprintf("i = %d minacc = %f maxacc = %f minacc_rand = %f maxacc_rand = %f time = %f\n", i + 1, minacc, maxacc, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                Rprintf("i = %d minacc = %f maxacc = %f minaccnon = %f maxaccnon = %f minacc_rand = %f maxacc_rand = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
                 prev_time = res[timer_cnt] / 1e9;
                 timer_cnt++;
             }
@@ -536,7 +636,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             {
                 timer.step("");
                 NumericVector res(timer);
-                Rprintf("i = %d minacc = %f maxacc = %f time = %f\n", i + 1, minacc, maxacc, (res[timer_cnt] / 1e9) - prev_time);
+                Rprintf("i = %d minacc = %f maxacc = %f minaccnon = %f maxaccnon = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, (res[timer_cnt] / 1e9) - prev_time);
                 prev_time = res[timer_cnt] / 1e9;
                 timer_cnt++;
             }
@@ -547,6 +647,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 nacc[j] = 0; nacc1[j] = 0;
                 nattempt[j] = 0; nattempt1[j] = 0;
             }
+            naccnon[0] = 0; naccnon1[0] = 0;
+            nattemptnon[0] = 0; nattemptnon1[0] = 0;
             if(nrand > 0)
             {
                 for(j = 0; j < nrand; j++)

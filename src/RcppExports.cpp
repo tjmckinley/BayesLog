@@ -7,8 +7,8 @@
 using namespace Rcpp;
 
 // logisticMH
-NumericMatrix logisticMH(NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP ninitialSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP, SEXP printiniSEXP) {
+NumericMatrix logisticMH(NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini, IntegerVector noncentreint);
+RcppExport SEXP BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP ninitialSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP, SEXP printiniSEXP, SEXP noncentreintSEXP) {
 BEGIN_RCPP
     Rcpp::RObject __result;
     Rcpp::RNGScope __rngScope;
@@ -29,7 +29,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerVector >::type nblock(nblockSEXP);
     Rcpp::traits::input_parameter< List >::type blockR(blockRSEXP);
     Rcpp::traits::input_parameter< int >::type printini(printiniSEXP);
-    __result = Rcpp::wrap(logisticMH(dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini));
+    Rcpp::traits::input_parameter< IntegerVector >::type noncentreint(noncentreintSEXP);
+    __result = Rcpp::wrap(logisticMH(dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini, noncentreint));
     return __result;
 END_RCPP
 }
