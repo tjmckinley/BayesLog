@@ -50,16 +50,16 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         
         Rprintf("\nRun time information printed to screen every %d iterations\n", nprintsum);
         Rprintf("Number of iterations = %d\n", niter);
-        Rprintf("Scale for adaptive proposal = %f\n", scale);
+        Rprintf("Scale for adaptive proposal = %.2f\n", scale);
         Rprintf("Number of regression parameters = %d\n", npars);
         if(nrand > 0) Rprintf("Number of random intercepts = %d\n", nrand);
         Rprintf("Adapt every %d iterations\n", nadapt);
-        Rprintf("Max scale for adapting = %f\n", maxscale);
+        Rprintf("Max scale for adapting = %.2f\n", maxscale);
         Rprintf("%d iterations before diminishing adaptation kicks in\n", (int) niterdim);
         
         //print prior information to screen
-        Rprintf("\nPriors: mean = %f variance = %f\n", priors(0, 0), priors(0, 1));
-        if(nrand > 0) Rprintf("Priors RE: lower = %f upper = %f\n", priors(npars - 1, 0), priors(npars - 1, 1));
+        Rprintf("\nPriors: mean = %.2f variance = %.2f\n", priors(0, 0), priors(0, 1));
+        if(nrand > 0) Rprintf("Priors RE: lower = %.2f upper = %.2f\n", priors(npars - 1, 0), priors(npars - 1, 1));
     }
     
     //convert Rcpp objects to native C objects for fast processing
@@ -167,7 +167,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     
 //    //print initial values to screen
 //    Rprintf("\nInitial values:\n");
-//    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %f\n", j, pars[j]);
+//    for(j = 0; j < npars; j++) Rprintf("pars[%d] = %.2f\n", j, pars[j]);
 //    Rprintf("\n");
     
     //check viability
@@ -660,11 +660,11 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 NumericVector res(timer);
                 if(nnoncentre > 0)
                 {
-                    Rprintf("i = %d minacc = %f maxacc = %f minaccnon = %f maxaccnon = %f minacc_rand = %f maxacc_rand = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                    Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f minacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
                 }
                 else
                 {
-                    Rprintf("i = %d minacc = %f maxacc = %f minacc_rand = %f maxacc_rand = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                    Rprintf("i = %d minacc = %.2f maxacc = %.2f minacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
                 }
                 prev_time = res[timer_cnt] / 1e9;
                 timer_cnt++;
@@ -675,11 +675,11 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 NumericVector res(timer);
                 if(nnoncentre > 0)
                 {
-                    Rprintf("i = %d minacc = %f maxacc = %f minaccnon = %f maxaccnon = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, (res[timer_cnt] / 1e9) - prev_time);
+                    Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, (res[timer_cnt] / 1e9) - prev_time);
                 }
                 else
                 {
-                    Rprintf("i = %d minacc = %f maxacc = %f time = %f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, (res[timer_cnt] / 1e9) - prev_time);
+                    Rprintf("i = %d minacc = %.2f maxacc = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, (res[timer_cnt] / 1e9) - prev_time);
                 }
                 prev_time = res[timer_cnt] / 1e9;
                 timer_cnt++;
@@ -717,7 +717,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     
     timer.step("");
     NumericVector res(timer);
-    Rprintf("Total run time = %f\n", res[timer_cnt] / 1e9);
+    Rprintf("Total run time = %.2f\n", res[timer_cnt] / 1e9);
     
     //return output
     return(output);
