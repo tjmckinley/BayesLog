@@ -20,6 +20,7 @@
 #' @param blocks        a list of integer vectors defining parameters to update in blocks.
 #' Missing parameters are filled in automatically as componentwise updates.
 #' @param noncentreint  a list of positions for non-centring relative to the intercept
+#' @param noncentreintRE  a vector of random intercepts to non-centre
 #'
 #' @return An object of class \code{bayesLog}, which is basically a list
 #' including a subset of elements:
@@ -33,7 +34,7 @@
 #' }
 #'
 
-bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA)
+bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA, noncentreintRE = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
@@ -63,6 +64,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
     
     stopifnot(is.list(blocks) | is.na(blocks[1]))
     stopifnot(is.list(noncentreint) | is.na(noncentreint[1]))
+    stopifnot(is.numeric(noncentreintRE) | is.na(noncentreintRE[1]))
     
     #save formula and data set for later output
     origformula <- formula
@@ -113,6 +115,13 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
     }
     else noncentreint <- list(rep(0, npars))
     
+    if(!is.na(noncentreintRE[1]))
+	{
+        stopifnot(all(!is.na(noncentreintRE)) & all(noncentreintRE > 0) & all(noncentreintRE <= nrand))
+        stopifnot(all(abs(floor(noncentreintRE) - noncentreintRE) < .Machine$double.eps ^ 0.5))
+    }
+    else noncentreintRE <- 0
+    
     #generate prior matrix
     priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
     
@@ -158,7 +167,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
-        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1), noncentreint)
+        model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1), noncentreint, noncentreintRE)
         #set variable names
         if(nrand > 0)
         {
