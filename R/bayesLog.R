@@ -19,6 +19,7 @@
 #' @param niterdim      the iteration at which the diminishing adaptation component kicks in
 #' @param blocks        a list of integer vectors defining parameters to update in blocks.
 #' Missing parameters are filled in automatically as componentwise updates.
+#' @param noncentreint  a list of positions for non-centring relative to the intercept
 #'
 #' @return An object of class \code{bayesLog}, which is basically a list
 #' including a subset of elements:
