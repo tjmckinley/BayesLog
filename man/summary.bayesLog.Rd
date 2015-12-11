@@ -5,11 +5,16 @@
 \alias{summary.bayesLog}
 \title{Summary statistics for \code{bayesLog} objects}
 \usage{
-\method{summary}{bayesLog}(object, ...)
+\method{summary}{bayesLog}(object, vars = c("all", "reg", "rand"), rand, ...)
 }
 \arguments{
 \item{object}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
+
+\item{vars}{a character specifying whether \code{"all"} parameters are to be plotted,
+or just the regression terms (\code{"reg"}), or one of the random effect terms (\code{"rand"}).
+If \code{vars = "rand"}, then the user must also specify a \code{rand} argument denoting
+which term to extract.}
 
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{summary.mcmc}}}
 }
