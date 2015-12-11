@@ -787,18 +787,18 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 {
                     if(nnoncentreRE > 0)
                     {
-                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f\nminacc_rand = %.2f maxacc_rand = %.2f minacc_randnon = %.2f maxacc_randnon = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, minaccnonRE, maxaccnonRE, (res[timer_cnt] / 1e9) - prev_time);
+                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f\n\tminacc_rand = %.2f maxacc_rand = %.2f minacc_randnon = %.2f maxacc_randnon = %.2f\n\time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, minaccnonRE, maxaccnonRE, (res[timer_cnt] / 1e9) - prev_time);
                     }
                     else
                     {
-                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f minacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minaccnon = %.2f maxaccnon = %.2f\n\tminacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
                     }
                 }
                 else
                 {
                     if(nnoncentreRE > 0)
                     {
-                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minacc_rand = %.2f maxacc_rand = %.2f\nminacc_randnon = %.2f maxacc_randnon = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, minaccnonRE, maxaccnonRE, (res[timer_cnt] / 1e9) - prev_time);
+                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minacc_rand = %.2f maxacc_rand = %.2f\n\tminacc_randnon = %.2f maxacc_randnon = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, minaccnonRE, maxaccnonRE, (res[timer_cnt] / 1e9) - prev_time);
                     }
                     else
                     {
