@@ -425,8 +425,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 {
                     if(noncentreint(m)(j) == 1)
                     {
-                        acc_curr += R::dnorm(pars[j], pars[0] + priors(k, 0), sqrt(priors(k, 1)), 1);
-                        acc_prop += R::dnorm(pars_prop[k], pars_prop[0] + priors(k, 0), sqrt(priors(k, 1)), 1);
+                        acc_curr += R::dnorm(pars[j] + pars[0], pars[0] + priors(j, 0), sqrt(priors(j, 1)), 1);
+                        acc_prop += R::dnorm(pars_prop[j] + pars_prop[0], pars_prop[0] + priors(j, 0), sqrt(priors(j, 1)), 1);
                     }
                 }
                 acc = acc_prop - acc_curr;
