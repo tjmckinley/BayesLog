@@ -238,6 +238,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         if(j == 0) nnoncentreRE = 0;
     }
     
+    if(nnoncentreRE > 0) for(i = 0; i < nnoncentreRE; i++) noncentreintRE(i)--;
+    
     //extract number of blocks
     int nblocks = nblock.size();
     
