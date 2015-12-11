@@ -309,7 +309,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     double prev_time = 0.0;
     
     // run chain
-    Rprintf("Starting run:\n");
+    Rprintf("\nStarting run:\n");
     for(i = 0; i < niter; i++)
     {  
         //check for user interruptions
