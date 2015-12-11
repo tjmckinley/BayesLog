@@ -9,6 +9,7 @@ extractData <- function(formula, dat, agg = TRUE)
     
     # extract formula
     rand <- lme4:::findbars(formula)
+    randnames <- list(NULL)
     if(!is.null(rand))
     {
         rand <- sapply(rand, all.vars)
@@ -20,6 +21,7 @@ extractData <- function(formula, dat, agg = TRUE)
         for(j in 1:ncol(temp))
         {
             stopifnot(is.factor(temp[, j]))
+            randnames[[j]] <- levels(temp[, j])
             temp[, j] <- as.numeric(temp[, j])
             temp[, j] <- temp[, j] - 1
         }
@@ -76,5 +78,5 @@ extractData <- function(formula, dat, agg = TRUE)
 	}
 	else mf_rand <- matrix(NA, 1, 1)
 	
-	return(list(mf = mf, mf_rand = mf_rand, formula = formula, nrand = nrand, nsamples = nsamples))
+	return(list(mf = mf, mf_rand = mf_rand, formula = formula, nrand = nrand, nsamples = nsamples, randnames = randnames))
 }

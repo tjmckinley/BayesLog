@@ -77,6 +77,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	formula <- temp$formula
 	nrand <- temp$nrand
 	nsamples <- temp$nsamples
+	randnames <- temp$randnames
 	rm(temp)
 	
 	#extract number of parameters
@@ -162,28 +163,31 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	
 	#extract variable names
 	varnames <- colnames(mf)[-1]
+    #set variable names
+    if(nrand > 0)
+    {
+        sdnames <- paste0(colnames(mf_rand), "sd")
+        randnames <- lapply(1:nrand, function(i, var, nam)
+        {
+            var <- var[i]
+            randnames <- randnames[[i]]
+            paste0(var, randnames)
+        }, var = colnames(mf_rand), nam = randnames)
+        randnames <- do.call("c", randnames)
+            
+        fullnames <- c(varnames, sdnames, randnames, "logposterior")
+    }
+    else fullnames <- c(varnames, "logposterior")
 	
 	#run model
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
 	{
         model.sim[[j]] <- logisticMH(mf, nsamples, inits[[j]], priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexes, mf_rand, nblocks, blocks, ifelse(j > 1, 0, 1), noncentreint, noncentreintRE)
+        
         #set variable names
-        if(nrand > 0)
-        {
-            randnames <- colnames(mf_rand)
-            sdnames <- paste0(randnames, "sd")
-            randnames <- lapply(1:length(randindexes), function(i, x, nam)
-            {
-                x <- x[[i]]
-                nam <- nam[i]
-                paste0(nam, 1:length(x))
-            }, x = randindexes, nam = randnames)
-            randnames <- do.call("c", randnames)
-                
-            colnames(model.sim[[j]]) <- c(varnames, sdnames, randnames, "logposterior")
-        }
-        else colnames(model.sim[[j]]) <- c(varnames, "logposterior")
+        colnames(model.sim[[j]]) <- fullnames
+        
         #convert to MCMC object
         model.sim[[j]] <- as.mcmc(model.sim[[j]])
     }
