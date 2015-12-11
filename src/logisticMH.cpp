@@ -205,7 +205,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     if(nnoncentre == 1)
     {
         j = 0;
-        for(i = 0; i < npars; i++) j += noncentreint(0)(i);
+        for(i = 0; i < (npars - nrand); i++) j += noncentreint(0)(i);
         if(j == 0) nnoncentre = 0;
     }
     
@@ -402,7 +402,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 nattemptnon[m]++;
                 
                 //update non-centred parameters
-                for(j = 1; j < npars; j++)
+                for(j = 1; j < (npars - nrand); j++)
                 {
                     pars_prop[j] = pars[j];
                     
@@ -421,7 +421,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 //adjust for priors
                 acc_curr += R::dnorm(pars[0], priors(0, 0), sqrt(priors(0, 1)), 1);
                 acc_prop += R::dnorm(pars_prop[0], priors(0, 0), sqrt(priors(0, 1)), 1);
-                for(j = 1; j < npars; j++)
+                for(j = 1; j < (npars - nrand); j++)
                 {
                     if(noncentreint(m)(j) == 1)
                     {
@@ -439,12 +439,12 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     if(log(R::runif(0.0, 1.0)) < acc)
                     {
                         naccnon[m]++;
-                        for(j = 0; j < npars; j++) pars[j] = pars_prop[j];
+                        for(j = 0; j < (npars - nrand); j++) pars[j] = pars_prop[j];
                         LL_curr = LL_prop;
                     }
-                    else for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
+                    else for(j = 0; j < (npars - nrand); j++) pars_prop[j] = pars[j];
                 }
-                else for(j = 0; j < npars; j++) pars_prop[j] = pars[j];
+                else for(j = 0; j < (npars - nrand); j++) pars_prop[j] = pars[j];
             }
         }
         
@@ -551,9 +551,16 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         // record posterior mean and variances for use in proposals
         if ((i + 1) % nadapt == 0)
         {
-            for(m = 0; m < (nblocks + nrand); m++)
+            for(m = 0; m < nblocks; m++)
             {
                 propsd[m] = adapt_scale(nacc[m] - nacc1[m], nattempt[m] - nattempt1[m], (nblock(m) > 1 ? 0.23:0.44), propsd[m], (double) i + 1, maxscale, niterdim);
+            }
+            if(nrand > 0)
+            {
+                for(m = nblocks; m < (nblocks + nrand); m++)
+                {
+                    propsd[m] = adapt_scale(nacc[m] - nacc1[m], nattempt[m] - nattempt1[m], 0.44, propsd[m], (double) i + 1, maxscale, niterdim);
+                }
             }
             if(nnoncentre > 0)
             {
