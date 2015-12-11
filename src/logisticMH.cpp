@@ -61,7 +61,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         
         //print prior information to screen
         Rprintf("\nPriors: mean = %.2f variance = %.2f\n", priors(0, 0), priors(0, 1));
-        if(nrand > 0) Rprintf("Priors RE: lower = %.2f upper = %.2f\n", priors(npars - 1, 0), priors(npars - 1, 1));
+        if(nrand > 0) Rprintf("Priors RE SD: lower = %.2f upper = %.2f\n", priors(npars - 1, 0), priors(npars - 1, 1));
     }
     
     //convert Rcpp objects to native C objects for fast processing
@@ -160,7 +160,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     {
         for(j = 0; j < nrand; j++)
         {
-            for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars[j + npars - nrand]), 1);
+            for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, pars[j + npars - nrand], 1);
         }
     }
     //add priors for regression parameters
@@ -498,8 +498,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     LL_prop = 0.0;
                     for(j = 0; j < nrandlevels[k - (npars - nrand)]; j++)
                     {
-                        LL_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars_prop[k]), 1);
-                        LL_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, sqrt(pars[k]), 1);
+                        LL_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars_prop[k], 1);
+                        LL_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars[k], 1);
                     }
                     
                     //priors and proposals cancel
@@ -539,8 +539,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     acc_curr = loglike_sub(pars, nrandindexes[k][j], data_ncols, data, nsamples, nrand, rand, data_rand, randindexes, nrandindexes, k, j, logL);
                     
                     //hierarchical terms
-                    acc_prop += R::dnorm(rand_prop[k][j], 0.0, sqrt(pars[k + npars - nrand]), 1);
-                    acc_curr += R::dnorm(rand[k][j], 0.0, sqrt(pars[k + npars - nrand]), 1);
+                    acc_prop += R::dnorm(rand_prop[k][j], 0.0, pars[k + npars - nrand], 1);
+                    acc_curr += R::dnorm(rand[k][j], 0.0, pars[k + npars - nrand], 1);
                     
                     //proposals cancel
                     
@@ -593,8 +593,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     acc_prop += R::dnorm(pars_prop[0], priors(0, 0), sqrt(priors(0, 1)), 1);
                     for(j = 0; j < nrandlevels[k]; j++)
                     {
-                        acc_prop += R::dnorm(rand_prop[k][j] + pars_prop[0], pars_prop[0], sqrt(pars[k + npars - nrand]), 1);
-                        acc_curr += R::dnorm(rand[k][j] + pars[0], pars[0], sqrt(pars[k + npars - nrand]), 1);
+                        acc_prop += R::dnorm(rand_prop[k][j] + pars_prop[0], pars_prop[0], pars[k + npars - nrand], 1);
+                        acc_curr += R::dnorm(rand[k][j] + pars[0], pars[0], pars[k + npars - nrand], 1);
                     }
                         
                     //proposals cancel
@@ -624,7 +624,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         {
             for(j = 0; j < nrand; j++)
             {
-                for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, sqrt(pars[j + npars - nrand]), 1);
+                for(k = 0; k < nrandlevels[j]; k++) acc_curr += R::dnorm(rand[j][k], 0.0, pars[j + npars - nrand], 1);
             }
         }
         //add priors for regression parameters
