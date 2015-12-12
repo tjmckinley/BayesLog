@@ -7,6 +7,8 @@
 #' @param object a \code{bayesLog} object, usually as a result of a call to
 #' \code{\link{bayesLog}}.
 #' @param newdata a data frame containing the new data at which to predict
+#' @param type a character taking the value \code{"fit"} if posterior predictive
+#' probabilities are required, and \code{"pred"} if binary predictions are required.
 #' @param \dots not used here
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link[coda]{summary.mcmc}}
@@ -15,10 +17,12 @@
 #'
 #' @export
 
-predict.bayesLog <- function(object, newdata, ...)
+predict.bayesLog <- function(object, newdata, type = c("fit", "pred"), ...)
 {
     stopifnot(class(object) == "bayesLog")
     stopifnot(is.data.frame(newdata))
+    
+    stopifnot(!is.na(match(type[1], c("fit", "pred"))))
     
     #extract formula and check newdata
     origformula <- object$formula
@@ -74,6 +78,7 @@ predict.bayesLog <- function(object, newdata, ...)
     pred <- exp(pred) / (1 + exp(pred))
     
     #perform predictive sampling
-    pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
+    if(type[1] == "pred") pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
+    else pred <- t(pred)
     pred
 }

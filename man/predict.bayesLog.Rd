@@ -4,13 +4,16 @@
 \alias{predict.bayesLog}
 \title{Predict function for \code{bayesLog} objects}
 \usage{
-\method{predict}{bayesLog}(object, newdata, ...)
+\method{predict}{bayesLog}(object, newdata, type = c("fit", "pred"), ...)
 }
 \arguments{
 \item{object}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
 
 \item{newdata}{a data frame containing the new data at which to predict}
+
+\item{type}{a character taking the value \code{"fit"} if posterior predictive
+probabilities are required, and \code{"pred"} if binary predictions are required.}
 
 \item{\dots}{not used here}
 }
