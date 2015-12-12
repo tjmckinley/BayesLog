@@ -29,7 +29,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     // to the intercept
     
     //initialise indexing variables
-    int i, j, k, m;
+    int i, j, k, m, q;
     
     //set number of threads
     int ncores = omp_get_num_procs();
@@ -214,14 +214,14 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
     //set number of non-centering components
     int nnoncentreRE = noncentreintRE.size();
     
-    double *propsdnonRE = (double *) R_alloc (nnoncentreRE, sizeof(double));
-    int *naccnonRE = (int *) R_alloc (nnoncentreRE, sizeof(int));
-    int *naccnonRE1 = (int *) R_alloc (nnoncentreRE, sizeof(int));
-    int *nattemptnonRE = (int *) R_alloc (nnoncentreRE, sizeof(int));
-    int *nattemptnonRE1 = (int *) R_alloc (nnoncentreRE, sizeof(int));
+    double *propsdnonRE = (double *) R_alloc (nnoncentreRE * 2, sizeof(double));
+    int *naccnonRE = (int *) R_alloc (nnoncentreRE * 2, sizeof(int));
+    int *naccnonRE1 = (int *) R_alloc (nnoncentreRE * 2, sizeof(int));
+    int *nattemptnonRE = (int *) R_alloc (nnoncentreRE * 2, sizeof(int));
+    int *nattemptnonRE1 = (int *) R_alloc (nnoncentreRE * 2, sizeof(int));
     
     //initialise objects if required
-    for(i = 0; i < nnoncentreRE; i++)
+    for(i = 0; i < (nnoncentreRE * 2); i++)
     {
         propsdnonRE[i] = 0.1;
         naccnonRE[i] = 0;
@@ -486,6 +486,10 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
         
         if(nrand > 0)
         {
+            ///////////////////////////////////////////////////////
+            //////////////     CENTRED VAR UPDATES    /////////////
+            ///////////////////////////////////////////////////////
+            
             //update hierarchical variance terms
             for(k = (npars - nrand); k < npars; k++)
             {
@@ -497,16 +501,16 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 if(pars_prop[k] > priors(k, 0) && pars_prop[k] < priors(k, 1))
                 {
                     //add hierarchical terms
-                    LL_prop = 0.0;
+                    acc_prop = 0.0;
                     for(j = 0; j < nrandlevels[k - (npars - nrand)]; j++)
                     {
-                        LL_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars_prop[k], 1);
-                        LL_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars[k], 1);
+                        acc_prop += R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars_prop[k], 1);
+                        acc_prop -= R::dnorm(rand[k - (npars - nrand)][j], 0.0, pars[k], 1);
                     }
                     
                     //priors and proposals cancel
                     
-                    acc = LL_prop;
+                    acc = acc_prop;
                     //accept/reject proposal
                     if(R_finite(acc) != 0)
                     {
@@ -520,6 +524,70 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     else pars_prop[k] = pars[k];
                 }
                 else pars_prop[k] = pars[k];
+            }
+            
+            ///////////////////////////////////////////////////////
+            //////////////   NONCENTRED VAR UPDATES   /////////////
+            ///////////////////////////////////////////////////////
+            
+            if(nnoncentreRE > 0)
+            {
+                for(m = 0; m < nnoncentreRE; m++)
+                {
+                    //extract relevant parameter
+                    q = npars - nrand + noncentreintRE(m);
+                    
+                    // propose new parameter value
+                    if(R::runif(0.0, 1.0) < scale) pars_prop[q] = R::rnorm(pars[q], 0.1);
+                    else pars_prop[q] = R::rnorm(pars[q], propsdnonRE[m]);
+                    nattemptnonRE[m]++;
+                    
+                    if(pars_prop[q] > priors(q, 0) && pars_prop[q] < priors(q, 1))
+                    {
+                        //update non-centred parameters
+                        k = noncentreintRE(m);
+                        for(j = 0; j < nrandlevels[k]; j++)
+                        {
+                            double temp = rand[k][j] / pars[q];
+                            rand_prop[k][j] = temp * pars_prop[q];
+                        }
+                        
+                        // calculate log-likelihood
+                        LL_prop = loglike(pars_prop, data_nrows, data_ncols, data, nsamples, nrand, rand_prop, data_rand, logL);
+                        acc_prop = LL_prop;
+                        acc_curr = LL_curr;
+                        
+                        //priors and proposals cancel
+                        
+                        acc = acc_prop - acc_curr;
+                        //accept/reject proposal
+                        if(R_finite(acc) != 0)
+                        {
+                            if(log(R::runif(0.0, 1.0)) < acc)
+                            {
+                                pars[q] = pars_prop[q];
+                                for(j = 0; j < nrandlevels[k]; j++) rand[k][j] = rand_prop[k][j];
+                                LL_curr = LL_prop;
+                                naccnonRE[m]++;
+                            }
+                            else
+                            {
+                                pars_prop[q] = pars[q];
+                                for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                            }
+                        }
+                        else
+                        {
+                            pars_prop[q] = pars[q];
+                            for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                        }
+                    }
+                    else
+                    {
+                        pars_prop[q] = pars[q];
+                        for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                    }
+                }
             }
             
             ///////////////////////////////////////////////////////
@@ -574,8 +642,8 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 {
                     // propose new parameter value
                     if(R::runif(0.0, 1.0) < scale) pars_prop[0] = R::rnorm(pars[0], 0.1);
-                    else pars_prop[0] = R::rnorm(pars[0], propsdnonRE[m]);
-                    nattemptnonRE[m]++;
+                    else pars_prop[0] = R::rnorm(pars[0], propsdnonRE[nnoncentreRE + m]);
+                    nattemptnonRE[nnoncentreRE + m]++;
                     
                     //update non-centred parameters
                     k = noncentreintRE(m);
@@ -610,7 +678,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                             pars[0] = pars_prop[0];
                             for(j = 0; j < nrandlevels[k]; j++) rand[k][j] = rand_prop[k][j];
                             LL_curr = LL_prop;
-                            naccnonRE[m]++;
+                            naccnonRE[nnoncentreRE + m]++;
                         }
                         else
                         {
@@ -684,7 +752,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
                 if(nnoncentreRE > 0)
                 {
-                    for(m = 0; m < nnoncentreRE; m++) propsdnonRE[m] = adapt_scale(naccnonRE[m] - naccnonRE1[m], nattemptnonRE[m] - nattemptnonRE1[m], 0.23, propsdnonRE[m], (double) i + 1, maxscale, niterdim);
+                    for(m = 0; m < (2 * nnoncentreRE); m++) propsdnonRE[m] = adapt_scale(naccnonRE[m] - naccnonRE1[m], nattemptnonRE[m] - nattemptnonRE1[m], 0.23, propsdnonRE[m], (double) i + 1, maxscale, niterdim);
                 }
             }
             
@@ -714,7 +782,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
                 if(nnoncentreRE > 0)
                 {
-                    for(m = 0; m < nnoncentreRE; m++)
+                    for(m = 0; m < (2 * nnoncentreRE); m++)
                     {
                         naccnonRE1[m] = naccnonRE[m];
                         nattemptnonRE1[m] = nattemptnonRE[m];
@@ -790,7 +858,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 {
                     minaccnonRE = ((double) naccnonRE[0]) / ((double) nattemptnonRE[0]);
                     maxaccnonRE = minaccnonRE;
-                    for(m = 1; m < nnoncentreRE; m++)
+                    for(m = 1; m < (2 * nnoncentreRE); m++)
                     {
                         tempacc = ((double) naccnonRE[m]) / ((double) nattemptnonRE[m]);
                         minaccnonRE = (minaccnonRE < tempacc ? minaccnonRE:tempacc);
@@ -869,7 +937,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                 }
                 if(nnoncentreRE > 0)
                 {
-                    for(m = 0; m < nnoncentreRE; m++)
+                    for(m = 0; m < (2 * nnoncentreRE); m++)
                     {
                         naccnonRE[m] = 0; naccnonRE1[m] = 0;
                         nattemptnonRE[m] = 0; nattemptnonRE1[m] = 0;
