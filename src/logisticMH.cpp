@@ -627,6 +627,15 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
             }
         }
         
+        //checks
+        for(j = 0; j < npars; j++) if(pars[j] != pars_prop[j]) Rcpp::stop("Pars mismatch\n");
+        for(k = 0; k < nrand; k++)
+        {
+            for(j = 0; j < nrandlevels[k]; j++) if(rand[k][j] != rand_prop[k][j]) Rcpp::stop("Rand mismatch\n");
+        }
+        LL_prop = loglike(pars, data_nrows, data_ncols, data, nsamples, nrand, rand, data_rand, logL);
+        if(fabs((LL_prop / LL_curr) - 1.0) > 1e-10) Rcpp::stop("LL mismatch\n");
+        
         //calculate the posterior for clarity
         acc_curr = LL_curr;
         //add hierarchical terms
