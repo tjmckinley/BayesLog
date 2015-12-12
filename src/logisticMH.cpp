@@ -612,9 +612,17 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                             LL_curr = LL_prop;
                             naccnonRE[m]++;
                         }
-                        else for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                        else
+                        {
+                            pars_prop[0] = pars[0];
+                            for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                        }
                     }
-                    else for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                    else
+                    {
+                        pars_prop[0] = pars[0];
+                        for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                    }
                 }
             }
         }
