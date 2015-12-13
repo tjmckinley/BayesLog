@@ -2,13 +2,20 @@
 % Please edit documentation in R/windowBayesLog.R
 \name{window.bayesLog}
 \alias{window.bayesLog}
-\title{Time windows for \code{bayesLog} objects}
+\title{Time windows for \code{bayesLog} xs}
 \usage{
-\method{window}{bayesLog}(x, ...)
+\method{window}{bayesLog}(x, vars = c("all", "reg", "rand"), rand, ...)
 }
 \arguments{
-\item{x}{a \code{bayesLog} object, usually as a result of a call to
+\item{x}{a \code{bayesLog} x, usually as a result of a call to
 \code{\link{bayesLog}}.}
+
+\item{vars}{a character specifying whether \code{"all"} parameters are to be plotted,
+or just the regression terms (\code{"reg"}), or one of the random effect terms (\code{"rand"}).
+If \code{vars = "rand"}, then the user must also specify a \code{rand} argument denoting
+which term to extract.}
+
+\item{rand}{an integer denoting which random effect to extract.}
 
 \item{\dots}{arguments to pass to \code{\link{window.mcmc}}}
 }

@@ -16,6 +16,8 @@ or just the regression terms (\code{"reg"}), or one of the random effect terms (
 If \code{vars = "rand"}, then the user must also specify a \code{rand} argument denoting
 which term to extract.}
 
+\item{rand}{an integer denoting which random effect to extract.}
+
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{summary.mcmc}}}
 }
 \value{
