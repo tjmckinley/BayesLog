@@ -14,8 +14,10 @@ double loglike (double *pars, int nrow, int ncol, double **data, double *nsample
     
     int i, j;
     double LL = 0.0, nu;
-    
-    #pragma omp parallel for private(i, nu, j) schedule(static)
+
+    #ifdef _OPENMP
+        #pragma omp parallel for private(i, nu, j) schedule(static)
+    #endif
     for(i = 0; i < nrow; i++)
     {
         //initialise linear component

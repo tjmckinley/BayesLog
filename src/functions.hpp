@@ -4,8 +4,10 @@
 #include <RcppArmadillo.h>
 // [[Rcpp::depends(RcppArmadillo)]]
 
+#ifdef _OPENMP
 #include <omp.h>
 // [[Rcpp::plugins(openmp)]]
+#endif
 
 #include <Rcpp/Benchmark/Timer.h>
 
