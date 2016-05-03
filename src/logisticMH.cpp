@@ -887,7 +887,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     }
                     else
                     {
-                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minaccnon, maxaccnon, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
+                        Rprintf("i = %d minacc = %.2f maxacc = %.2f minacc_rand = %.2f maxacc_rand = %.2f time = %.2f\n", i + 1, minacc, maxacc, minacc_rand, maxacc_rand, (res[timer_cnt] / 1e9) - prev_time);
                     }
                 }
                 prev_time = res[timer_cnt] / 1e9;
