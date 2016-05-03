@@ -24,6 +24,8 @@ window.bayesLog <- function(x, vars = c("all", "reg", "rand"), rand, ...)
     stopifnot(is.character(vars))
     stopifnot(!is.na(match(vars[1], c("reg", "rand", "all"))))
     
+    if(vars[1] == "rand" & missing(rand)) stop("Need to specify which random effects to extract")
+    
     #extract 'mcmc' x
     y <- x$post
     
