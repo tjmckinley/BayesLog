@@ -35,7 +35,6 @@ summary.bayesLog <- function(object, vars = c("all", "reg", "rand"), rand, ...)
     #extract 'mcmc' object
     y <- object$post
     
-    
     #summarise
     summary(y, ...)
 }
