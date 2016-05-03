@@ -12,6 +12,13 @@ extractData <- function(formula, dat, agg = TRUE)
     randnames <- list(NULL)
     if(!is.null(rand))
     {
+        #check that terms are random intercepts only
+        sapply(rand, function(x)
+        {
+            x <- as.character(x)[[2]]
+            if(x != "1") stop("Model can only fits hierarchical terms of the form (1 | var)...")
+        })
+        
         rand <- sapply(rand, all.vars)
         #check that hierarchical terms are factors and
         #then convert to integers
