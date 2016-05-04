@@ -3,16 +3,17 @@ Type: Package
 Title: Bayesian methods for inference
     using logistic regression models
 Version: 1.0
-Date: 2015-12-06
+Date: 2016-05-04
 Author: TJ McKinley
 Maintainer: TJ McKinley <t.mckinley@exeter.ac.uk>
-Description: Package uses MCMC methods for fitting binary logistic regression models in
-    a Bayesian framework.
+Description: Package uses MCMC methods for fitting binary logistic regression
+    models in a Bayesian framework.
 License: GPL (>= 2)
-Imports: Rcpp (>= 0.11.4),
-         RcppArmadillo,
-         coda,
-         lme4,
-         ggplot2
+Imports:
+    Rcpp (>= 0.11.4),
+    RcppArmadillo,
+    coda,
+    lme4
 LinkingTo: Rcpp,
-           RcppArmadillo
+    RcppArmadillo
+RoxygenNote: 5.0.1
