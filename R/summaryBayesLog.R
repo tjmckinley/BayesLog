@@ -8,11 +8,8 @@
 #' 
 #' @param object a \code{bayesLog} object, usually as a result of a call to
 #' \code{\link{bayesLog}}.
-#' @param vars a character specifying whether \code{"all"} parameters are to be plotted,
-#' or just the regression terms (\code{"reg"}), or one of the random effect terms (\code{"rand"}).
-#' If \code{vars = "rand"}, then the user must also specify a \code{rand} argument denoting
-#' which term to extract.
-#' @param rand an integer denoting which random effect to extract.
+#' @param vars a character specifying whether just the regression terms are to be
+#' plotted (\code{"reg"}), or all of the terms (\code{"all"}).
 #' @param \dots additional arguments to be passed to \code{\link[coda]{summary.mcmc}}
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{summary.mcmc}}
@@ -23,17 +20,17 @@
 #'
 #' @aliases print.bayesLog
 
-summary.bayesLog <- function(object, vars = c("all", "reg", "rand"), rand, ...)
+summary.bayesLog <- function(object, vars = c("reg", "all"), ...)
 {
     stopifnot(class(object) == "bayesLog")
     
     stopifnot(is.character(vars))
-    stopifnot(!is.na(match(vars[1], c("reg", "rand", "all"))))
+    stopifnot(!is.na(match(vars[1], c("reg", "all"))))
     
-    if(vars[1] != "all") object <- window(object, vars = vars[1], rand = rand)
-    
-    #extract 'mcmc' object
+    #extract 'mcmc' x
     y <- object$post
+    
+    if(vars[1] == "reg") y <- y[, 1:(object$nregpars + object$nrand)]
     
     #summarise
     summary(y, ...)
@@ -45,5 +42,5 @@ print.bayesLog <- function(x, ...)
 {
     stopifnot(class(x) == "bayesLog")
     
-    print(summary(x, ...))
+    print(x, ...)
 }
