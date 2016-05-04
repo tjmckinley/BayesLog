@@ -38,7 +38,7 @@
         y <- lapply(y, as.mcmc)
         y <- as.mcmc.list(y)
     }
-    else y <- as.mcmc(y[i, j, drop = F])
+    else y <- as.mcmc(as.matrix(y)[i, j, drop = F])
     
     #return bayesLog object
     x$post <- y
