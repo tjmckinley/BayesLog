@@ -19,8 +19,9 @@
 #' @param niterdim      the iteration at which the diminishing adaptation component kicks in
 #' @param blocks        a list of integer vectors defining parameters to update in blocks.
 #' Missing parameters are filled in automatically as componentwise updates.
-#' @param noncentreint  a list of positions for non-centring relative to the intercept
-#' @param noncentreintRE  a vector of random intercepts to non-centre
+#' @param noncentreint  a vector of variable names for non-centring relative to the intercept.
+#' If missing, then only centred updates performed. If \code{noncentreint == "all"} then all
+#' updates are non-centred.
 #'
 #' @return An object of class \code{bayesLog}, which is basically a list
 #' including a subset of elements:
@@ -34,7 +35,8 @@
 #' }
 #'
 
-bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA, noncentreintRE = NA)
+bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, 
+                     scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
@@ -63,8 +65,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
     stopifnot(nprintsum %% nadapt == 0)
     
     stopifnot(is.list(blocks) | is.na(blocks[1]))
-    stopifnot(is.list(noncentreint) | is.na(noncentreint[1]))
-    stopifnot(is.numeric(noncentreintRE) | is.na(noncentreintRE[1]))
+    stopifnot(is.character(noncentreint) | is.na(noncentreint[1]))
     
     #save formula and data set for later output
     origformula <- formula
@@ -102,26 +103,6 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
         nblocks <- sapply(blocks, length)
     }
     blocks <- lapply(blocks, function(x) x - 1)
-    
-    if(!is.na(noncentreint[1]))
-	{
-        stopifnot(all(sapply(noncentreint, function(x) all(!is.na(x)) & all(x > 0) & all(abs(floor(x) - x) < .Machine$double.eps ^ 0.5) & all(x <= npars))))
-        
-        noncentreint <- lapply(noncentreint, function(x)
-        {
-            temp <- rep(0, npars)
-            temp[x] <- 1
-            temp
-        })
-    }
-    else noncentreint <- list(rep(0, npars))
-    
-    if(!is.na(noncentreintRE[1]))
-	{
-        stopifnot(all(!is.na(noncentreintRE)) & all(noncentreintRE > 0) & all(noncentreintRE <= nrand))
-        stopifnot(all(abs(floor(noncentreintRE) - noncentreintRE) < .Machine$double.eps ^ 0.5))
-    }
-    else noncentreintRE <- 0
     
     #generate prior matrix
     priors <- matrix(rep(c(0, priorvar), npars), ncol = 2, byrow = T)
@@ -179,6 +160,56 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
     }
     else fullnames <- c(varnames, "logposterior")
 	
+	# set number of levels in random intercepts terms
+	nrandlevels <- sapply(randindexes, length)
+	
+	if(!is.na(noncentreint[1]))
+	{ 
+	  #extract all variables in model
+	  predictors <- all.vars(origformula)
+	  
+	  #remove response 
+	  predictors <- predictors[-match(as.character(origformula)[2], predictors)]
+	  
+	  if(noncentreint[1] == "all") noncentreint <- predictors
+	  
+	  #cross reference these against required variable names
+	  noncentreint <- unique(noncentreint)
+	  temp <- match(noncentreint, predictors)
+	  if(!all(!is.na(temp))) stop("Variable names in required subset for non-centring do not match variables in model")
+	  
+	  # split j into fixed and random effects
+	  randj <- noncentreint[!is.na(match(noncentreint, colnames(mf_rand)))]
+	  fixj <- noncentreint[is.na(match(noncentreint, colnames(mf_rand)))]
+	  
+	  # if valid, then extract correct columns corresponding to columns
+	  if(length(fixj) > 0)
+	  {
+	    fixlistj <- lapply(fixj, function(x, names, assign)
+	    {
+	      x <- match(x, names)
+	      which(assign == x)
+	    }, names = predictors, 
+	    assign = attr(model.matrix(lme4::nobars(origformula), dat), "assign"))
+	    
+	    noncentreint <- lapply(fixlistj, function(x)
+	    {
+	      temp <- rep(0, npars)
+	      temp[x] <- 1
+	      temp
+	    })
+	  }
+	  else noncentreint <- list(rep(0, npars))
+	    
+	  if(length(randj) > 0) noncentreintRE <- match(randj, colnames(mf_rand))
+	  else noncentreintRE <- 0
+	}
+	else
+	{
+	  noncentreint <- list(rep(0, npars))
+	  noncentreintRE <- 0
+	}
+	
 	#run model
 	model.sim <- list(NULL)
 	for(j in 1:nchains)
@@ -197,7 +228,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	else model.sim <- model.sim[[1]]
 	
 	#append data and formula to object
-	model.sim <- list(post = model.sim, formula = origformula, data = origdat, nregpars = length(varnames), nrand = nrand, nrandlevels = sapply(randindexes, length), randnames = colnames(mf_rand))
+	model.sim <- list(post = model.sim, formula = origformula, data = origdat, nregpars = length(varnames), nrand = nrand, nrandlevels = nrandlevels, randnames = colnames(mf_rand))
 	
 	#set class
 	class(model.sim) <- "bayesLog"
