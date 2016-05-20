@@ -31,4 +31,8 @@ void adapt_update(int i, int ninitial, int niter, int npars, arma::vec *tempmn, 
 // [[Rcpp::export]]
 NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini, List noncentreintR, NumericVector noncentreintRE);
 
+//function for producing sens, spec, ppv and npv from posterior predictions
+// [[Rcpp::export]]
+List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh);
+
 #endif // __FUNCTIONS__

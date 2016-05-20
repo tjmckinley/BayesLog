@@ -4,11 +4,14 @@
 \alias{plot.bayesLog}
 \title{Plots \code{bayesLog} objects}
 \usage{
-\method{plot}{bayesLog}(x, ...)
+\method{plot}{bayesLog}(x, vars = c("reg", "all"), ...)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
 \code{\link{bayesLog}}.}
+
+\item{vars}{a character specifying whether just the regression terms are to be
+plotted (\code{"reg"}), or all of the terms (\code{"all"}).}
 
 \item{\dots}{additional arguments to be passed to \code{\link[coda]{plot.mcmc}}}
 }

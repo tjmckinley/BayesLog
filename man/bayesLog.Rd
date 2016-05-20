@@ -7,7 +7,7 @@
 bayesLog(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
   nchains = 2, niter = 2e+05, ninitial = 100, scale = 0.05,
   nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000,
-  blocks = NA, noncentreint = NA, noncentreintRE = NA)
+  blocks = NA, noncentreint = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
@@ -38,9 +38,9 @@ parameters. If missing then these are simulated.}
 \item{blocks}{a list of integer vectors defining parameters to update in blocks.
 Missing parameters are filled in automatically as componentwise updates.}
 
-\item{noncentreint}{a list of positions for non-centring relative to the intercept}
-
-\item{noncentreintRE}{a vector of random intercepts to non-centre}
+\item{noncentreint}{a vector of variable names for non-centring relative to the intercept.
+If missing, then only centred updates performed. If \code{noncentreint == "all"} then all
+updates are non-centred.}
 }
 \value{
 An object of class \code{bayesLog}, which is basically a list
