@@ -585,7 +585,7 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
                     else
                     {
                         pars_prop[q] = pars[q];
-                        for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
+                        //for(j = 0; j < nrandlevels[k]; j++) rand_prop[k][j] = rand[k][j];
                     }
                 }
             }
