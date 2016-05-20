@@ -47,10 +47,10 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
                 tab(1, 1) += (obs(k) == 1 && classifier(k) == 1 ? 1:0);
             }
             
-            sens(k, j) = ((double) tab(1, 1)) / ((double) (tab(0, 1) + tab(1, 1)));
-            spec(k, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(1, 0)));
-            ppv(k, j) = ((double) tab(1, 1)) / ((double) (tab(1, 0) + tab(1, 1)));
-            npv(k, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(0, 1)));
+            sens(i, j) = ((double) tab(1, 1)) / ((double) (tab(0, 1) + tab(1, 1)));
+            spec(i, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(1, 0)));
+            ppv(i, j) = ((double) tab(1, 1)) / ((double) (tab(1, 0) + tab(1, 1)));
+            npv(i, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(0, 1)));
         }
     }
     
