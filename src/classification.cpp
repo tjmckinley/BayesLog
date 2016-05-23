@@ -26,6 +26,7 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
     NumericMatrix spec(npred, nthresh);
     NumericMatrix ppv(npred, nthresh);
     NumericMatrix npv(npred, nthresh);
+    NumericMatrix miss(npred, nthresh);
     
     //loop over predictions
     for(i = 0; i < npred; i++)
@@ -51,6 +52,7 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
             spec(i, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(1, 0)));
             ppv(i, j) = ((double) tab(1, 1)) / ((double) (tab(1, 0) + tab(1, 1)));
             npv(i, j) = ((double) tab(0, 0)) / ((double) (tab(0, 0) + tab(0, 1)));
+            miss(i, j) = ((double) tab(0, 1) + tab(1, 0)) / ((double) (nobs));
         }
     }
     
@@ -60,6 +62,7 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
     output["spec"] = spec;
     output["ppv"] = ppv;
     output["npv"] = npv;
+    output["miss"] = miss;
     
     return(output);
 }
