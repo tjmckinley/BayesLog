@@ -6,7 +6,7 @@
 \alias{print.bayesLog.auc}
 \title{Generates AUC for \code{bayesLog.pred} objects}
 \usage{
-AUC(x)
+AUC(x, ...)
 
 \method{plot}{bayesLog.auc}(x, ...)
 

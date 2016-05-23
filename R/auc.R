@@ -13,17 +13,24 @@
 #' samples.
 #'
 
-AUC <- function(x) UseMethod("AUC")
+AUC <- function(x, ...) UseMethod("AUC")
 
 AUC.bayesLog.pred <- function(x, obs, ...)
 {
+    if (!requireNamespace("caTools", quietly = TRUE))
+    {
+        stop("'caTools' package needed for function to work. Please install it.", 
+             call. = FALSE)
+    }
+    require(caTools)
+    
     stopifnot(class(x) == "bayesLog.pred")
     stopifnot(is.vector(obs))
     stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
     
     class(x) <- "matrix"
     
-    stopifnot(nrow(x) == length(obs))
+    stopifnot(ncol(x) == length(obs))
     
     auc <- colAUC(t(x), obs)
     auc <- as.numeric(auc)
