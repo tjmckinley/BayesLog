@@ -2,7 +2,7 @@
 #' specificity, PPV and NPV
 #'
 #' @description Generates posterior distributions for sensitivity
-#' specificity, PPV and NPV from a set of posterior predictions
+#' specificity, PPV and NPV from a set of posterior predictions.
 #'
 #' @export
 #'
@@ -11,16 +11,15 @@
 #' @param obs 		 Vector of binary observations (of length \code{nobs})
 #' @param thresh     Vector of thresholds between 0 and 1 at which to generate
 #'                   classification estimates.
+#' @param ...        Not currently used.
 #'
 #' @return An object of class \code{bayesLog.class}, which is a list
 #' including a subset of elements: \code{sens}, \code{spec}, \code{ppv}, \code{npv}
 #' which are \code{npred} x \code{nthresh} matrices, and and element \code{thresh}
 #' which is a vector of thresholds.
 #'
-#' @alias plot.bayesLog.class
-#'
 
-classify <- function(pred, obs, thresh)
+classify <- function(pred, obs, thresh, ...)
 {    
     #check inputs
     stopifnot(is.matrix(pred))
@@ -42,20 +41,71 @@ classify <- function(pred, obs, thresh)
 	output
 }
 
-##' @describeIn classify
-##' @export
-#plot.bayesLog.class <- function(x, ...)
-#{
-#    stopifnot(class(x) == "bayesLog.class")
-#    
-#    x <- lapply(x, function(x) c(mean(x), quantile(x, probs = c(0.025, 0.975))))
-#    x <- lapply(x, as.data.frame)
-#    x <- lapply(1:length(x), function(i, x, name)
-#    {
-#        x <- x[[i]]
-#        x$class <- rep(name[i], nrow(x))
-#        x
-#    }, x = x, name = names(x))
-#}
+#' @describeIn classify Plot method for \code{bayesLog.class} objects
+#' @export
+#' @param type      Character vector defining whether to plot
+#'                  individual or comparative plots.
+plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
+{
+   stopifnot(class(x) == "bayesLog.class")
+   stopifnot(length(which(is.na(match(type[1], c("ind", "comp"))))) == 0)
+   
+   #extract thresholds
+   thresh <- x$thresh
+   x <- x[-which(names(x) == "thresh")]
+   
+   x <- lapply(x, function(x) apply(x, 2, function(x)
+   {
+        x <- x[is.finite(x)]
+        c(mean(x), quantile(x, probs = c(0.025, 0.975)))
+   }))
+   x <- lapply(x, function(x)
+   {
+        x <- t(x)
+        x <- as.data.frame(x)
+        colnames(x) <- c("mean", "LCI", "UCI")
+        x
+   })
+   x <- lapply(1:length(x), function(i, x, name, thresh)
+   {
+       x <- x[[i]]
+       x$class <- rep(name[i], nrow(x))
+       x$thresh <- thresh
+       x
+   }, x = x, name = names(x), thresh = thresh)
+   
+   if(type[1] == "ind")
+   {
+       x <- do.call("rbind", x)
+       x$class <- factor(x$class)
+       
+       p <- ggplot(x, aes(x = thresh, y = mean)) + geom_point() +
+           geom_errorbar(aes(x = thresh, ymax = UCI, ymin = LCI)) +
+           facet_wrap(~class)
+       print(p)
+    }
+    else
+    {
+        #extract sens and spec
+        x1 <- data.frame(sens = x[[1]]$mean, spec = x[[2]]$mean, thresh = x[[1]]$thresh)
+        x2 <- data.frame(ppv = x[[3]]$mean, npv = x[[4]]$mean, thresh = x[[1]]$thresh)
+        
+        #setup plots
+        p1 <- ggplot(x1, aes(x = 1 - spec, y = sens, label = thresh)) + geom_point() + geom_line() +
+            xlab("1 - Specificity") + ylab("Sensitivity") + coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
+            geom_text(hjust = 0, nudge_x = 0.05, check_overlap = T)
+        p2 <- ggplot(x2, aes(x = 1 - npv, y = ppv, label = thresh), ylim = c(0, 1), xlim = c(0, 1)) + geom_point() + geom_line() +
+            xlab("1 - NPV") + ylab("PPV") + coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
+            geom_text(hjust = 0, nudge_x = 0.05, check_overlap = T)
+        
+        grid.newpage()
+        pushViewport(viewport(layout = grid.layout(1, 2)))
+        vplayout <- function(x, y){
+          viewport(layout.pos.row = x, layout.pos.col = y)
+        }
+        print(p1, vp = vplayout(1, 1))
+        print(p2, vp = vplayout(1, 2))
+    }
+}
 
 

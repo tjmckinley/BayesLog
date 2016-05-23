@@ -2,10 +2,13 @@
 % Please edit documentation in R/classify.R
 \name{classify}
 \alias{classify}
+\alias{plot.bayesLog.class}
 \title{Generates posterior distributions for sensitivity
 specificity, PPV and NPV}
 \usage{
-classify(pred, obs, thresh)
+classify(pred, obs, thresh, ...)
+
+plot.bayesLog.class(x, type = c("ind", "comp"), ...)
 }
 \arguments{
 \item{pred}{Matrix of dimension (\code{npred} x \code{nobs}) containing predicted
@@ -15,6 +18,11 @@ values from \code{bayesLog} model.}
 
 \item{thresh}{Vector of thresholds between 0 and 1 at which to generate
 classification estimates.}
+
+\item{...}{Not currently used.}
+
+\item{type}{Character vector defining whether to plot
+individual or comparative plots.}
 }
 \value{
 An object of class \code{bayesLog.class}, which is a list
@@ -26,4 +34,8 @@ which is a vector of thresholds.
 Generates posterior distributions for sensitivity
 specificity, PPV and NPV from a set of posterior predictions
 }
+\section{Functions}{
+\itemize{
+\item \code{plot.bayesLog.class}: Plot method for \code{bayesLog.class} objects
+}}
 

@@ -22,10 +22,10 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
     IntegerMatrix tab(2, 2);
     
     //set up matrices for outputs
-    NumericMatrix sens(nobs, nthresh);
-    NumericMatrix spec(nobs, nthresh);
-    NumericMatrix ppv(nobs, nthresh);
-    NumericMatrix npv(nobs, nthresh);
+    NumericMatrix sens(npred, nthresh);
+    NumericMatrix spec(npred, nthresh);
+    NumericMatrix ppv(npred, nthresh);
+    NumericMatrix npv(npred, nthresh);
     
     //loop over predictions
     for(i = 0; i < npred; i++)

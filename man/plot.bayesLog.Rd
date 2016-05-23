@@ -4,7 +4,7 @@
 \alias{plot.bayesLog}
 \title{Plots \code{bayesLog} objects}
 \usage{
-\method{plot}{bayesLog}(x, vars = c("reg", "all"), ...)
+plot.bayesLog(x, vars = c("reg", "all"), ...)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
