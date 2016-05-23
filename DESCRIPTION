@@ -13,7 +13,12 @@ Imports:
     Rcpp (>= 0.11.4),
     RcppArmadillo,
     coda,
-    lme4
+    lme4,
+    ggplot2,
+    grid
+Suggests:
+    circlize,
+    caTools
 LinkingTo: Rcpp,
     RcppArmadillo
 RoxygenNote: 5.0.1
