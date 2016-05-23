@@ -3,12 +3,18 @@
 \name{classify}
 \alias{classify}
 \alias{plot.bayesLog.class}
+\alias{print.bayesLog.class}
+\alias{summary.bayesLog.class}
 \title{Generates posterior distributions for sensitivity
 specificity, PPV and NPV}
 \usage{
 classify(pred, obs, thresh, ...)
 
-plot.bayesLog.class(x, type = c("ind", "comp"), ...)
+\method{summary}{bayesLog.class}(object, ...)
+
+\method{print}{bayesLog.class}(x, ...)
+
+\method{plot}{bayesLog.class}(x, type = c("ind", "comp"), ...)
 }
 \arguments{
 \item{pred}{Matrix of dimension (\code{npred} x \code{nobs}) containing predicted
@@ -21,6 +27,10 @@ classification estimates.}
 
 \item{...}{Not currently used.}
 
+\item{object}{An object of class \code{bayesLog.class}}
+
+\item{x}{An object of class \code{bayesLog.class}}
+
 \item{type}{Character vector defining whether to plot
 individual or comparative plots.}
 }
@@ -32,10 +42,14 @@ which is a vector of thresholds.
 }
 \description{
 Generates posterior distributions for sensitivity
-specificity, PPV and NPV from a set of posterior predictions
+specificity, PPV and NPV from a set of posterior predictions.
 }
-\section{Functions}{
+\section{Methods (by generic)}{
 \itemize{
-\item \code{plot.bayesLog.class}: Plot method for \code{bayesLog.class} objects
+\item \code{summary}: Summary method for \code{bayesLog.class} objects
+
+\item \code{print}: Print method for \code{bayesLog.class} objects
+
+\item \code{plot}: Plot method for \code{bayesLog.class} objects
 }}
 

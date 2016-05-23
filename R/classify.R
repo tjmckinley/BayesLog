@@ -41,6 +41,42 @@ classify <- function(pred, obs, thresh, ...)
 	output
 }
 
+#' @describeIn classify Summary method for \code{bayesLog.class} objects
+#' @param object    An object of class \code{bayesLog.class}
+#' @export
+summary.bayesLog.class <- function(object, ...)
+{
+    stopifnot(class(object) == "bayesLog.class")
+    
+    thresh <- object$thresh
+    object <- object[-which(names(object) == "thresh")]
+    
+    mn <- t(sapply(object, function(x) apply(x, 2, mean)))
+    colnames(mn) <- thresh
+    
+    quantile <- lapply(object, function(x) apply(x, 2, function(x)
+    {
+        x <- x[is.finite(x)]
+        quantile(x, probs = c(0.025, 0.975))
+    }))
+    quantile <- lapply(quantile, function(x, thresh){ colnames(x) <- thresh; x}, thresh = thresh)
+    
+    x <- list(mean = mn, quantiles = quantile)
+    class(x) <- "summary.bayesLog.class"
+    x
+}
+
+#' @describeIn classify Print method for \code{bayesLog.class} objects
+#' @param x    An object of class \code{bayesLog.class}
+#' @export
+print.bayesLog.class <- function(x, ...)
+{
+    stopifnot(class(object) == "summary.bayesLog.class")
+    
+    x <- summary(x)
+    print(x)
+}
+
 #' @describeIn classify Plot method for \code{bayesLog.class} objects
 #' @export
 #' @param type      Character vector defining whether to plot
@@ -98,6 +134,9 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
             xlab("1 - NPV") + ylab("PPV") + coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
             geom_text(hjust = 0, nudge_x = 0.05, check_overlap = T)
         
+        #set width and height of plot
+        if(dev.cur() == 1) dev.new(width = 7, height = 3.5)
+        
         grid.newpage()
         pushViewport(viewport(layout = grid.layout(1, 2)))
         vplayout <- function(x, y){
@@ -106,6 +145,17 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
         print(p1, vp = vplayout(1, 1))
         print(p2, vp = vplayout(1, 2))
     }
+}
+
+#' @export
+print.summary.bayesLog.class <- function(x, ...)
+{
+    stopifnot(class(x) == "summary.bayesLog.class")
+    
+    cat("Classification means:\n\n")
+    print(x$mean)
+    cat("\nQuantiles:\n\n")
+    print(x$quantiles)
 }
 
 
