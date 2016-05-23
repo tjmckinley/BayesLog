@@ -6,12 +6,11 @@
 #'
 #' @export
 #'
-#' @param pred       Matrix of dimension (\code{npred} x \code{nobs}) containing predicted
-#'                   values from \code{bayesLog} model.
+#' @param pred       A \code{bayesLog.pred} object.
 #' @param obs 		 Vector of binary observations (of length \code{nobs})
 #' @param thresh     Vector of thresholds between 0 and 1 at which to generate
 #'                   classification estimates.
-#' @param ...        Not currently used.
+#' @param \dots        Not currently used.
 #'
 #' @return An object of class \code{bayesLog.class}, which is a list
 #' including a subset of elements: \code{sens}, \code{spec}, \code{ppv}, \code{npv}
@@ -19,10 +18,12 @@
 #' which is a vector of thresholds.
 #'
 
-classify <- function(pred, obs, thresh, ...)
+classify <- function(x) UseMethod("classify")
+
+classify.bayesLog.pred <- function(pred, obs, thresh, ...)
 {    
     #check inputs
-    stopifnot(is.matrix(pred))
+    stopifnot(class(pred) == "bayesLog.pred")
     stopifnot(is.vector(obs))
     stopifnot(is.vector(thresh))
     
