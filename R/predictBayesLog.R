@@ -13,7 +13,8 @@
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link[coda]{summary.mcmc}}
 #'
-#' @return A vector of posterior predictive samples
+#' @return A \code{bayesLog.pred} object, essentially a matrix of posterior 
+#' predictive samples.
 #'
 #' @export
 
@@ -80,5 +81,6 @@ predict.bayesLog <- function(object, newdata, type = c("fit", "pred"), ...)
     #perform predictive sampling
     if(type[1] == "pred") pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
     else pred <- t(pred)
+    class(pred) <- "bayesLog.pred"
     pred
 }

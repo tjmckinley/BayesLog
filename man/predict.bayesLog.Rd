@@ -18,7 +18,8 @@ probabilities are required, and \code{"pred"} if binary predictions are required
 \item{\dots}{not used here}
 }
 \value{
-A vector of posterior predictive samples
+A \code{bayesLog.pred} object, essentially a matrix of posterior 
+predictive samples.
 }
 \description{
 \code{predict} method for class \code{bayesLog}
