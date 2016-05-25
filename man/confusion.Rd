@@ -2,9 +2,12 @@
 % Please edit documentation in R/confusion.R
 \name{confusion}
 \alias{confusion}
+\alias{confusion.bayesLog.pred}
 \title{Generates confusion matrix from \code{bayesLog.pred} objects}
 \usage{
 confusion(x, obs, thresh, plot = T, ...)
+
+\method{confusion}{bayesLog.pred}(x, obs, thresh, plot = F, ...)
 }
 \arguments{
 \item{x}{An object of class \code{bayesLog.pred}.}
@@ -21,8 +24,12 @@ confusion(x, obs, thresh, plot = T, ...)
 A confusion matrix, and a plot if required.
 }
 \description{
-Produces confusion matrix from \code{\link{bayesLog.pred}} objects.
+Produces confusion matrix from \code{bayesLog.pred} objects.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{bayesLog.pred}: Produces confusion matrix for \code{bayesLog.pred} objects
+}}
 \author{
 TJ McKinley (based on code from Mario Recker)
 }

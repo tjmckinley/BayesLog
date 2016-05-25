@@ -1,21 +1,21 @@
 #' @title Generates AUC for \code{bayesLog.pred} objects
 #' 
-#' @description Produce posterior for AUC from \code{\link{bayesLog.pred}} objects.
+#' @description Produce posterior for AUC from \code{bayesLog.pred} objects.
 #' 
-#' @export
-#' 
-#' @param x    An object of class \code{bayesLog.pred}.
-#' @param obs  A vector of binary observations.
+#' @param object    An object of class \code{bayesLog.pred}.
+#' @param obs       A binary vector of observations.
 #' @param \dots not used here.
 #' @author TJ McKinley
 #'
 #' @return A \code{bayesLog.auc} object, essentially a vector of posterior 
 #' samples.
 #'
+#' @export
+AUC <- function(object, obs, ...) UseMethod("AUC")
 
-AUC <- function(x, ...) UseMethod("AUC")
-
-AUC.bayesLog.pred <- function(x, obs, ...)
+#' @describeIn AUC AUC method for \code{bayesLog.pred} objects
+#' @export
+AUC.bayesLog.pred <- function(object, obs, ...)
 {
     if (!requireNamespace("caTools", quietly = TRUE))
     {
@@ -24,24 +24,23 @@ AUC.bayesLog.pred <- function(x, obs, ...)
     }
     require(caTools)
     
-    stopifnot(class(x) == "bayesLog.pred")
+    stopifnot(class(object) == "bayesLog.pred")
     stopifnot(is.vector(obs))
     stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
     
-    class(x) <- "matrix"
+    class(object) <- "matrix"
     
-    stopifnot(ncol(x) == length(obs))
+    stopifnot(ncol(object) == length(obs))
     
-    auc <- colAUC(t(x), obs)
+    auc <- colAUC(t(object), obs)
     auc <- as.numeric(auc)
     class(auc) <- "bayesLog.auc"
     auc
 }
 
-#' @describeIn AUC Plot method for \code{bayesLog.auc} objects.
-#' @param x    An object of class \code{bayesLog.auc}
+#' @describeIn AUC Plot method for \code{bayesLog.auc} objects
+#' @param x A \code{bayesLog.auc} object
 #' @export
-
 plot.bayesLog.auc <- function(x, ...)
 {
     stopifnot(class(x) == "bayesLog.auc")
@@ -51,10 +50,8 @@ plot.bayesLog.auc <- function(x, ...)
         ggtitle("Posterior predictive distribution") + ylab("Density")
 }
 
-#' @describeIn AUC Print method for \code{bayesLog.auc} objects.
-#' @param x    An object of class \code{bayesLog.auc}
+#' @describeIn AUC Print method for \code{bayesLog.auc} objects
 #' @export
-
 print.bayesLog.auc <- function(x, ...)
 {
     stopifnot(class(x) == "bayesLog.auc")

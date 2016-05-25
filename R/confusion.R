@@ -1,8 +1,6 @@
 #' @title Generates confusion matrix from \code{bayesLog.pred} objects
 #' 
-#' @description Produces confusion matrix from \code{\link{bayesLog.pred}} objects.
-#' 
-#' @export
+#' @description Produces confusion matrix from \code{bayesLog.pred} objects.
 #' 
 #' @param x    An object of class \code{bayesLog.pred}.
 #' @param obs  A vector of binary observations.
@@ -13,9 +11,12 @@
 #'
 #' @return A confusion matrix, and a plot if required.
 #'
+#' @export
 
 confusion <- function(x, obs, thresh, plot = T, ...) UseMethod("confusion")
 
+#' @describeIn confusion Produces confusion matrix for \code{bayesLog.pred} objects
+#' @export
 confusion.bayesLog.pred <- function(x, obs, thresh, plot = F, ...)
 {
     stopifnot(class(x) == "bayesLog.pred")

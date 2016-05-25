@@ -15,7 +15,8 @@ Imports:
     coda,
     lme4,
     ggplot2,
-    grid
+    grid,
+    stats
 Suggests:
     circlize,
     caTools

@@ -9,6 +9,7 @@
 #' @param inits         List containing vectors of initial values for the regression
 #' parameters. If missing then these are simulated.
 #' @param priorvar      A numeric specifying the prior variance for all regression terms.
+#' @param prior_rand_ub An upper bound on the prior standard deviation for the hierarchical terms.
 #' @param nchains       Number of chains to run.
 #' @param niter         Number of iterations to run per chain.
 #' @param ninitial      Number of iterations before adaptive proposal kicks in

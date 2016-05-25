@@ -9,7 +9,7 @@
 #' @docType package
 #' @name BayesLog-package
 #' @author TJ McKinley <t.mckinley@@exeter.ac.uk>
-#' @import coda Rcpp RcppArmadillo lme4 ggplot2 grid
+#' @import coda Rcpp RcppArmadillo lme4 ggplot2 grid stats
 #' @useDynLib BayesLog
 NULL
 

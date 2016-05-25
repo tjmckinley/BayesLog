@@ -19,6 +19,8 @@ parameters. If missing then these are simulated.}
 
 \item{priorvar}{A numeric specifying the prior variance for all regression terms.}
 
+\item{prior_rand_ub}{An upper bound on the prior standard deviation for the hierarchical terms.}
+
 \item{nchains}{Number of chains to run.}
 
 \item{niter}{Number of iterations to run per chain.}

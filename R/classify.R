@@ -18,8 +18,10 @@
 #' which is a vector of thresholds.
 #'
 
-classify <- function(x) UseMethod("classify")
+classify <- function(pred, obs, thresh, ...) UseMethod("classify")
 
+#' @describeIn classify Classify method for \code{bayesLog.pred} objects
+#' @export
 classify.bayesLog.pred <- function(pred, obs, thresh, ...)
 {    
     #check inputs
@@ -72,7 +74,7 @@ summary.bayesLog.class <- function(object, ...)
 #' @export
 print.bayesLog.class <- function(x, ...)
 {
-    stopifnot(class(object) == "summary.bayesLog.class")
+    stopifnot(class(x) == "summary.bayesLog.class")
     
     x <- summary(x)
     print(x)
