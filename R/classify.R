@@ -84,10 +84,14 @@ print.bayesLog.class <- function(x, ...)
 #' @export
 #' @param type      Character vector defining whether to plot
 #'                  individual or comparative plots.
-plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
+#' @param comp_type Character containing subplot to extract when doing comparative plotting.
+#'                  If \code{"all"} then plots both ROC and Predictive Values plots, else one
+#'                  can choose to produce either.
+plot.bayesLog.class <- function(x, type = c("ind", "comp"), comp_type = c("all", "ROC", "PV"), ...)
 {
    stopifnot(class(x) == "bayesLog.class")
    stopifnot(length(which(is.na(match(type[1], c("ind", "comp"))))) == 0)
+   stopifnot(length(which(is.na(match(comp_type[1], c("all", "ROC", "PV"))))) == 0)
    
    #extract thresholds
    thresh <- x$thresh
@@ -123,7 +127,7 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
        p <- ggplot(x, aes(x = thresh, y = mean)) + geom_point() +
            geom_errorbar(aes(x = thresh, ymax = UCI, ymin = LCI)) +
            facet_wrap(~class)
-       print(p)
+       return(p)
     }
     else
     {
@@ -139,17 +143,32 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
             xlab("1 - NPV") + ylab("PPV") + coord_cartesian(ylim = c(0, 1), xlim = c(0, 1)) +
             geom_text(hjust = 0, nudge_x = 0.05, check_overlap = T)
         
-        #set width and height of plot
-        if(dev.cur() == 1) dev.new(width = 7, height = 3.5)
-        
-        grid.newpage()
-        pushViewport(viewport(layout = grid.layout(1, 2)))
-        vplayout <- function(x, y){
-          viewport(layout.pos.row = x, layout.pos.col = y)
+        #in order to plot the object on output, we add a
+        #print function below as a small hack
+        if(comp_type[1] == "all")
+        {
+            p <- arrangeGrob(grobs = list(p1, p2), layout_matrix = matrix(c(1, 2), nrow = 1))
+            class(p) <- c("grArrange", class(p))
+            return(p)
         }
-        print(p1, vp = vplayout(1, 1))
-        print(p2, vp = vplayout(1, 2))
+        else
+        {
+            if(comp_type[1] == "ROC") return(p1)
+            else return(p2)
+        }
     }
+}
+
+#'@export
+print.grArrange <- function(x, ...)
+{
+    stopifnot(class(x)[1] == "grArrange")
+    class(x) <- class(x)[-1]
+    
+    #set width and height of plot
+    if(dev.cur() == 1) dev.new(width = 7, height = 3.5)
+    
+    grid.draw(x)
 }
 
 #' @export

@@ -16,7 +16,8 @@ Imports:
     lme4,
     ggplot2,
     grid,
-    stats
+    stats,
+    gridExtra
 Suggests:
     circlize,
     caTools
