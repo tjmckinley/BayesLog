@@ -17,7 +17,7 @@ confusion <- function(x, obs, thresh, plot = T, ...) UseMethod("confusion")
 
 #' @describeIn confusion Produces confusion matrix for \code{bayesLog.pred} objects
 #' @export
-confusion.bayesLog.pred <- function(x, obs, thresh, plot = F, ...)
+confusion.bayesLog.pred <- function(x, obs, thresh, plot = T, ...)
 {
     stopifnot(class(x) == "bayesLog.pred")
     stopifnot(is.vector(obs))
@@ -36,12 +36,12 @@ confusion.bayesLog.pred <- function(x, obs, thresh, plot = F, ...)
     Pred <- ifelse(x > thresh, 1, 0)
     Obs <- obs
     x <- t(table(Pred, Obs))
-    if(plot) plot.confusion.matrix(x, c(0, 1))
+    if(plot) plot.confusion.matrix(x, c(0, 1), thresh)
     x
 }
 
 # @param x          A 2 x 2 contingency table
-plot.confusion.matrix <- function(x, labs, ...)
+plot.confusion.matrix <- function(x, labs, thresh, ...)
 {
     if (!requireNamespace("circlize", quietly = TRUE))
     {
@@ -63,8 +63,8 @@ plot.confusion.matrix <- function(x, labs, ...)
          xlim = c(0, 4), ylim = c(0, 4), xaxs = "i", yaxs = "i", asp = 1, cex.lab = 1.7, font.lab = 2)
     axis(3, at = c(1, 3), labels = labs, cex.axis = 1.5)
     axis(2, at = c(1, 3), labels = rev(labs), cex.axis = 1.5)
-    mtext("Predicted", side = 3, line = 3, cex = 1.5, font = 2)
-    mtext("Observed", side = 2, line = 3, cex = 1.5, font = 2)
+    mtext(paste0("Predicted (p = ", thresh, ")"), side = 3, line = 3, cex = 1.5)
+    mtext("Observed", side = 2, line = 3, cex = 1.5)
     abline(h = 2, lwd = 0.8, col = 'blue')
     abline(v = 2, lwd = 0.8, col = 'blue')
     
