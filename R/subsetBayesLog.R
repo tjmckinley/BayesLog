@@ -13,6 +13,7 @@
 #' @param i the iterations to extract
 #' @param j the variables to extract (can be a numerical vector, or a 
 #' character vector of variables to extract)
+#' @param dropcols  logical denoting whether to drop selected columns or keep them
 #' @param \dots not used here
 #' @author TJ McKinley
 #' @seealso \code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}}
@@ -22,7 +23,7 @@
 #' @export
 #'
 
-"[.bayesLog" <- function(x, i, j)
+"[.bayesLog" <- function(x, i, j, dropcols = FALSE)
 {
     stopifnot(class(x) == "bayesLog")
   
@@ -97,6 +98,8 @@
         j <- do.call("c", listj)
       }
     }
+    
+    if(dropcols) j <- -j
     
     #extract 'mcmc' object
     y <- x$post
