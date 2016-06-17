@@ -113,6 +113,8 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), ...)
        x
    }, x = x, name = names(x), thresh = thresh)
    
+   x <- na.omit(x)
+   
    if(type[1] == "ind")
    {
        x <- do.call("rbind", x)
