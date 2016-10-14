@@ -159,7 +159,7 @@ plot.bayesLog.class <- function(x, type = c("ind", "comp"), comp_type = c("all",
     }
 }
 
-#'@export
+#' @export
 print.grArrange <- function(x, ...)
 {
     stopifnot(class(x)[1] == "grArrange")
