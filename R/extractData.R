@@ -1,7 +1,7 @@
 #function to extract correct variables from data set and generate
 #design matrix
 
-extractData <- function(formula, dat, agg = TRUE)
+extractData <- function(formula, dat, agg = T)
 {
 	# append nsamples to formula for data extraction
 	formula <- update.formula(formula, ~ . + nsamples)
@@ -66,25 +66,28 @@ extractData <- function(formula, dat, agg = TRUE)
 	#convert rest of data into design matrix
     mf <- model.matrix(formula, mf)
     
-    if(agg)
-    {
-        # now aggregate data to speed code up
+    # now aggregate data to speed code up
+    if(agg){
         mf <- as.data.frame(mf)
         mf <- cbind(resp = mf.resp, mf)
-		grp_cols <- mf %>% select(-nsamples) %>% colnames
-		dots <- lapply(grp_cols, as.symbol)
-		mf <- mf %>% group_by_(.dots = dots) %>%
-		summarise(nsamples = sum(nsamples)) %>%
-		as.data.frame
+	    grp_cols <- mf %>% select(-nsamples) %>% colnames
+	    dots <- lapply(grp_cols, as.symbol)
+	    mf <- mf %>% group_by_(.dots = dots) %>%
+	    summarise(nsamples = sum(nsamples)) %>%
+	    as.data.frame
         nsamples <- mf$nsamples
         mf <- mf %>% select(-nsamples)
-        
-        #update formula
-        formula <- update.formula(formula, ~. - nsamples)
-	
-	    #convert back to matrix for running C++ code
-	    mf <- as.matrix(mf)
-	}
+    } else {
+        nsamples <- mf[, colnames(mf) == "nsamples"]
+        stopifnot(is.vector(nsamples))
+        mf <- mf[, colnames(mf) != "nsamples"]
+    }
+    
+    #update formula
+    formula <- update.formula(formula, ~. - nsamples)
+
+    #convert back to matrix for running C++ code
+    mf <- as.matrix(mf)
 	
 	#extract hierarchical terms if necessary
 	if(nrand > 0)

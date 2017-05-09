@@ -5,7 +5,7 @@ logisticMH <- function(dataR, nsamplesR, ini_pars, priors, niter, ninitial, scal
     .Call('BayesLog_logisticMH', PACKAGE = 'BayesLog', dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini, noncentreintR, noncentreintRE)
 }
 
-classification <- function(pred, obs, thresh) {
-    .Call('BayesLog_classification', PACKAGE = 'BayesLog', pred, obs, thresh)
+classification <- function(pred, obs, nsamples, thresh) {
+    .Call('BayesLog_classification', PACKAGE = 'BayesLog', pred, obs, nsamples, thresh)
 }
 

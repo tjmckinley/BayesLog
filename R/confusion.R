@@ -20,21 +20,33 @@ confusion <- function(x, obs, thresh, plot = T, ...) UseMethod("confusion")
 confusion.bayesLog.pred <- function(x, obs, thresh, plot = T, ...)
 {
     stopifnot(class(x) == "bayesLog.pred")
-    stopifnot(is.vector(obs))
-    stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
     
+    #check observations
+    if(is.list(obs)) {
+        #check names match
+        stopifnot(all(!is.na(match(names(obs), c("obs", "nsamples")))))
+        #check data types
+        stopifnot(is.vector(obs$obs))
+        stopifnot(length(obs$obs[obs$obs != 0 & obs$obs != 1]) == 0)
+        #check sizes match
+        stopifnot(all(obs$nsamples == x$nsamples))
+        obs <- obs$obs
+    } else {
+        stopifnot(is.vector(obs))
+        stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
+        stopifnot(ncol(x) == length(obs))
+        stopifnot(all(x$nsamples == 1))
+    }
+    stopifnot(max(x$pred) <= 1.0 & min(x$pred) >= 0)
     stopifnot(length(thresh) == 1)
     stopifnot(is.numeric(thresh) & thresh >= 0 & thresh <= 1)
     stopifnot(is.logical(plot))
     
-    class(x) <- "matrix"
-    
-    stopifnot(ncol(x) == length(obs))
-    
     #extract posterior mean
-    x <- apply(x, 2, mean)
-    Pred <- ifelse(x > thresh, 1, 0)
-    Obs <- obs
+    Pred <- apply(x$pred, 2, mean)
+    Pred <- rep(Pred, times = x$nsamples)
+    Pred <- ifelse(Pred > thresh, 1, 0)
+    Obs <- rep(obs, times = x$nsamples)
     x <- t(table(Pred, Obs))
     if(plot) plot.confusion.matrix(x, c(0, 1), thresh)
     x

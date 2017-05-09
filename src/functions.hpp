@@ -33,6 +33,6 @@ NumericMatrix logisticMH (NumericMatrix dataR, NumericVector nsamplesR, NumericV
 
 //function for producing sens, spec, ppv and npv from posterior predictions
 // [[Rcpp::export]]
-List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh);
+List classification (NumericMatrix pred, IntegerVector obs, IntegerVector nsamples, NumericVector thresh);
 
 #endif // __FUNCTIONS__

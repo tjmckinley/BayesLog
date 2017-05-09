@@ -1,10 +1,11 @@
 #include "functions.hpp"
 
 //function for producing sens, spec, ppv and npv from posterior predictions
-List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh)
+List classification (NumericMatrix pred, IntegerVector obs, IntegerVector nsamples, NumericVector thresh)
 {
     // 'pred' is npred x nobs matrix of predicted probabilities
     // 'obs' is numeric vector of binary observations of length nobs
+    // 'nsamples' contains number of samples for each obs entry
     // 'thresh' is vector of thresholds between 0 and 1 for classification
     
     //initialise indexing variables
@@ -42,10 +43,10 @@ List classification (NumericMatrix pred, IntegerVector obs, NumericVector thresh
             
             for(k = 0; k < nobs; k++)
             {
-                tab(0, 0) += (obs(k) == 0 && classifier(k) == 0 ? 1:0);
-                tab(0, 1) += (obs(k) == 1 && classifier(k) == 0 ? 1:0);
-                tab(1, 0) += (obs(k) == 0 && classifier(k) == 1 ? 1:0);
-                tab(1, 1) += (obs(k) == 1 && classifier(k) == 1 ? 1:0);
+                tab(0, 0) += (obs(k) == 0 && classifier(k) == 0 ? nsamples(k):0);
+                tab(0, 1) += (obs(k) == 1 && classifier(k) == 0 ? nsamples(k):0);
+                tab(1, 0) += (obs(k) == 0 && classifier(k) == 1 ? nsamples(k):0);
+                tab(1, 1) += (obs(k) == 1 && classifier(k) == 1 ? nsamples(k):0);
             }
             
             sens(i, j) = ((double) tab(1, 1)) / ((double) (tab(0, 1) + tab(1, 1)));

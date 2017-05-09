@@ -26,15 +26,31 @@ classify.bayesLog.pred <- function(pred, obs, thresh, ...)
 {    
     #check inputs
     stopifnot(class(pred) == "bayesLog.pred")
-    stopifnot(is.vector(obs))
-    stopifnot(is.vector(thresh))
     
-    stopifnot(max(pred) <= 1.0 & min(pred) >= 0)
-    stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
+    #check observations
+    if(is.list(obs)) {
+        #check names match
+        stopifnot(all(!is.na(match(names(obs), c("obs", "nsamples")))))
+        #check data types
+        stopifnot(is.vector(obs$obs))
+        stopifnot(length(obs$obs[obs$obs != 0 & obs$obs != 1]) == 0)
+        #check sizes match
+        stopifnot(all(obs$nsamples == pred$nsamples))
+        obs <- obs$obs
+    } else {
+        stopifnot(is.vector(obs))
+        stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
+        stopifnot(ncol(pred) == length(obs))
+        stopifnot(all(pred$nsamples == 1))
+    }
+    
+    ##check thresh and pred
+    stopifnot(is.vector(thresh))
+    stopifnot(max(pred$pred) <= 1.0 & min(pred$pred) >= 0)
     stopifnot(max(thresh) <= 1.0 & min(thresh) >= 0)
     thresh <- unique(sort(thresh))
     
-    output <- classification(pred, obs, thresh)
+    output <- classification(pred$pred, obs, pred$nsamples, thresh)
     
     #add thresholds
     output$thresh <- thresh

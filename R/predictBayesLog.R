@@ -25,15 +25,20 @@ predict.bayesLog <- function(object, newdata, type = c("fit", "pred"), ...)
     
     stopifnot(!is.na(match(type[1], c("fit", "pred"))))
     
-    #extract formula and check newdata
+    #extract formula, check and aggregate newdata
     origformula <- object$formula
     origdata <- object$data
-	temp <- extractData(object$formula, newdata, agg = F)
+    stopifnot(length(which(colnames(newdata) == "nsamples")) <= 1)
+    if(length(which(colnames(newdata) == "nsamples")) == 0) {
+    	newdata$nsamples <- rep(1, nrow(origdata))
+    }
+	temp <- extractData(object$formula, newdata, F)
 	mf <- temp$mf
 	mf_rand <- temp$mf_rand
 	formula <- temp$formula
 	nrand <- temp$nrand
 	nsamples <- temp$nsamples
+	newdata <- temp$origdata
 	rm(temp)
     
     #extract posteriors in matrix form
@@ -79,8 +84,13 @@ predict.bayesLog <- function(object, newdata, type = c("fit", "pred"), ...)
     pred <- exp(pred) / (1 + exp(pred))
     
     #perform predictive sampling
-    if(type[1] == "pred") pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
-    else pred <- t(pred)
+    if(type[1] == "pred") {
+    	pred <- apply(pred, 1, function(x) rbinom(length(x), size = 1, prob = x))
+    } else {
+    	pred <- t(pred)
+    }
+    # return list including aggregation information
+    pred <- list(pred = pred, nsamples = nsamples)
     class(pred) <- "bayesLog.pred"
     pred
 }

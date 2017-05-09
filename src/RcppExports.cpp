@@ -36,15 +36,16 @@ BEGIN_RCPP
 END_RCPP
 }
 // classification
-List classification(NumericMatrix pred, IntegerVector obs, NumericVector thresh);
-RcppExport SEXP BayesLog_classification(SEXP predSEXP, SEXP obsSEXP, SEXP threshSEXP) {
+List classification(NumericMatrix pred, IntegerVector obs, IntegerVector nsamples, NumericVector thresh);
+RcppExport SEXP BayesLog_classification(SEXP predSEXP, SEXP obsSEXP, SEXP nsamplesSEXP, SEXP threshSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type pred(predSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type obs(obsSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type nsamples(nsamplesSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type thresh(threshSEXP);
-    rcpp_result_gen = Rcpp::wrap(classification(pred, obs, thresh));
+    rcpp_result_gen = Rcpp::wrap(classification(pred, obs, nsamples, thresh));
     return rcpp_result_gen;
 END_RCPP
 }

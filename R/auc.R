@@ -24,16 +24,34 @@ AUC.bayesLog.pred <- function(object, obs, ...)
     }
     require(caTools)
     
+    #check bayesLog.pred object entered
     stopifnot(class(object) == "bayesLog.pred")
-    stopifnot(is.vector(obs))
-    stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
     
+    #check observations
+    if(is.list(obs)) {
+        #check names match
+        stopifnot(all(!is.na(match(names(obs), c("obs", "nsamples")))))
+        #check data types
+        stopifnot(is.vector(obs$obs))
+        stopifnot(length(obs$obs[obs$obs != 0 & obs$obs != 1]) == 0)
+        #check sizes match
+        stopifnot(all(obs$nsamples == object$nsamples))
+        obs <- obs$obs
+    } else {
+        stopifnot(is.vector(obs))
+        stopifnot(length(obs[obs != 0 & obs != 1]) == 0)
+        stopifnot(ncol(object) == length(obs))
+        stopifnot(all(object$nsamples == 1))
+    }
+    
+    object <- object$pred
     class(object) <- "matrix"
-    
-    stopifnot(ncol(object) == length(obs))
     
     auc <- colAUC(t(object), obs)
     auc <- as.numeric(auc)
+    if(is.list(obs)) {
+        auc <- rep(auc, times = pred$nsamples)
+    }
     class(auc) <- "bayesLog.auc"
     auc
 }
