@@ -6,6 +6,7 @@
 #'
 #' @param formula       Formula for linear regression
 #' @param dat 		    Data frame containing data.
+#' @param nsamples      Character specifying names of column in data to use as number of samples.
 #' @param inits         List containing vectors of initial values for the regression
 #' parameters. If missing then these are simulated.
 #' @param priorvar      A numeric specifying the prior variance for all regression terms.
@@ -36,12 +37,31 @@
 #' }
 #'
 
-bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, 
+bayesLog <- function(formula, dat, nsamples = NA, inits = NA, priorvar = 1, prior_rand_ub = 20, nchains = 2, niter = 200000, ninitial = 100, 
                      scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000, blocks = NA, noncentreint = NA)
 {    
     #check inputs
     stopifnot(is.data.frame(dat))
 	for(j in 1:ncol(dat)) stopifnot(is.factor(dat[, j]) | is.numeric(dat[, j]) | is.logical(dat[, j]))
+	
+	stopifnot(is.na(nsamples) | (length(nsamples) == 1 & is.character(nsamples)))
+	if(!is.na(nsamples)){
+		stopifnot(length(which(colnames(dat) == nsamples)) == 1)
+		form <- attributes(terms(formula))$term.labels
+		form <- which(form == nsamples)
+		if(length(form) != 0) {
+			stop("'nsamples' term also involved in formula.")
+		}
+		colnames(dat)[which(colnames(dat) == nsamples)] <- "nsamples"
+	} else {
+		stopifnot(length(which(colnames(dat) == "nsamples")) != 0)
+		form <- attributes(terms(formula))$term.labels
+		form <- which(form == "nsamples")
+		if(length(form) != 0) {
+			stop("'nsamples' term also involved in formula.")
+		}
+		dat$nsamples <- rep(1, nrow(dat))
+	}
     
     stopifnot(is.list(inits) | is.na(inits[1]))
     stopifnot(all(sapply(inits, is.vector)) | is.na(inits[1]))
@@ -80,6 +100,7 @@ bayesLog <- function(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
 	nrand <- temp$nrand
 	nsamples <- temp$nsamples
 	randnames <- temp$randnames
+	origdat <- temp$origdat
 	rm(temp)
 	
 	#extract number of parameters

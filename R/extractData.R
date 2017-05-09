@@ -3,6 +3,12 @@
 
 extractData <- function(formula, dat, agg = TRUE)
 {
+	# append nsamples to formula for data extraction
+	formula <- update.formula(formula, ~ . + nsamples)
+	
+	# set original data 
+	origdat <- dat
+	
     #check intercept is present
     form <- terms(formula)
     stopifnot(attributes(form)$intercept == 1)
@@ -46,6 +52,9 @@ extractData <- function(formula, dat, agg = TRUE)
         formula <- update.formula(formula, formula(paste("~ . +", paste(rand, collapse = "+")))) 
     }
     else nrand <- 0
+    
+    #extract original data
+    origdat <- origdat[, match(as.character(attributes(terms(formula))$variables)[-1], colnames(origdat))]
 	
 	#check data names
     mf <- model.frame(formula = formula, data = dat, na.action = na.fail)
@@ -57,24 +66,25 @@ extractData <- function(formula, dat, agg = TRUE)
 	#convert rest of data into design matrix
     mf <- model.matrix(formula, mf)
     
-    # check there are no columns called 'rand' or 'nsamples'
-    temp <- match("nsamples", attr(mf, "names"))
-    if (length(temp[!is.na(temp)]) > 0) stop("Can't name variable 'nsamples'")
-    
     if(agg)
     {
         # now aggregate data to speed code up
         mf <- as.data.frame(mf)
         mf <- cbind(resp = mf.resp, mf)
-        mf <- aggregate(rep(1, nrow(mf)), mf, table)
-        mf[, ncol(mf)] <- as.numeric(mf[, ncol(mf)])
-        nsamples <- mf[, ncol(mf)]
-        mf <- mf[, -ncol(mf)]
+		grp_cols <- mf %>% select(-nsamples) %>% colnames
+		dots <- lapply(grp_cols, as.symbol)
+		mf <- mf %>% group_by_(.dots = dots) %>%
+		summarise(nsamples = sum(nsamples)) %>%
+		as.data.frame
+        nsamples <- mf$nsamples
+        mf <- mf %>% select(-nsamples)
+        
+        #update formula
+        formula <- update.formula(formula, ~. - nsamples)
 	
 	    #convert back to matrix for running C++ code
 	    mf <- as.matrix(mf)
 	}
-	else nsamples <- rep(1, nrow(mf))
 	
 	#extract hierarchical terms if necessary
 	if(nrand > 0)
@@ -85,5 +95,5 @@ extractData <- function(formula, dat, agg = TRUE)
 	}
 	else mf_rand <- matrix(NA, 1, 1)
 	
-	return(list(mf = mf, mf_rand = mf_rand, formula = formula, nrand = nrand, nsamples = nsamples, randnames = randnames))
+	return(list(mf = mf, mf_rand = mf_rand, origdat = origdat, formula = formula, nrand = nrand, nsamples = nsamples, randnames = randnames))
 }
