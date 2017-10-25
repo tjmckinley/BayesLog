@@ -19,10 +19,9 @@
 Acts as a wrapper function for \code{\link[coda]{window.mcmc}} from the \code{coda}
 package
 }
-\author{
-TJ McKinley
-}
 \seealso{
 \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} \code{\link[coda]{window.mcmc}}
 }
-
+\author{
+TJ McKinley
+}

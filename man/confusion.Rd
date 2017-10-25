@@ -7,7 +7,7 @@
 \usage{
 confusion(x, obs, thresh, plot = T, ...)
 
-\method{confusion}{bayesLog.pred}(x, obs, thresh, plot = F, ...)
+\method{confusion}{bayesLog.pred}(x, obs, thresh, plot = T, ...)
 }
 \arguments{
 \item{x}{An object of class \code{bayesLog.pred}.}
@@ -30,7 +30,7 @@ Produces confusion matrix from \code{bayesLog.pred} objects.
 \itemize{
 \item \code{bayesLog.pred}: Produces confusion matrix for \code{bayesLog.pred} objects
 }}
+
 \author{
 TJ McKinley (based on code from Mario Recker)
 }
-

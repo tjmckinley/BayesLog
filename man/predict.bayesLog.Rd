@@ -27,10 +27,9 @@ predictive samples.
 \details{
 Produce predictions for \code{\link{bayesLog}} objects.
 }
-\author{
-TJ McKinley
-}
 \seealso{
 \code{\link{bayesLog}} \code{\link[coda]{summary.mcmc}}
 }
-
+\author{
+TJ McKinley
+}

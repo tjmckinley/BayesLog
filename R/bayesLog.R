@@ -54,7 +54,7 @@ bayesLog <- function(formula, dat, nsamples = NA, inits = NA, priorvar = 1, prio
 		}
 		colnames(dat)[which(colnames(dat) == nsamples)] <- "nsamples"
 	} else {
-		stopifnot(length(which(colnames(dat) == "nsamples")) != 0)
+		stopifnot(length(which(colnames(dat) == "nsamples")) == 0)
 		form <- attributes(terms(formula))$term.labels
 		form <- which(form == "nsamples")
 		if(length(form) != 0) {

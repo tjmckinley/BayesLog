@@ -23,11 +23,10 @@ Produces trace and/or density plots for \code{\link{bayesLog}} objects.
 These are based on the \code{\link[coda]{plot.mcmc}} functions from the \code{coda}
 package
 }
-\author{
-TJ McKinley
-}
 \seealso{
 \code{\link{bayesLog}} \code{\link{summary.bayesLog}} \code{\link{window.bayesLog}} 
 \code{\link[coda]{plot.mcmc}}
 }
-
+\author{
+TJ McKinley
+}

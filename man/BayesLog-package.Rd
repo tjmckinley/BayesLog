@@ -15,4 +15,3 @@ a Bayesian framework.
 \author{
 TJ McKinley <t.mckinley@exeter.ac.uk>
 }
-

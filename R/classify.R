@@ -90,7 +90,7 @@ summary.bayesLog.class <- function(object, ...)
 #' @export
 print.bayesLog.class <- function(x, ...)
 {
-    stopifnot(class(x) == "summary.bayesLog.class")
+    stopifnot(class(x) == "bayesLog.class")
     
     x <- summary(x)
     print(x)

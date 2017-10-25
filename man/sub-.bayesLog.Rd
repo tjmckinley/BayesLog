@@ -4,7 +4,7 @@
 \alias{[.bayesLog}
 \title{Subset method for \code{bayesLog} objects}
 \usage{
-\method{[}{bayesLog}(x, i, j)
+\method{[}{bayesLog}(x, i, j, dropcols = FALSE)
 }
 \arguments{
 \item{x}{a \code{bayesLog} object, usually as a result of a call to
@@ -14,6 +14,8 @@
 
 \item{j}{the variables to extract (can be a numerical vector, or a 
 character vector of variables to extract)}
+
+\item{dropcols}{logical denoting whether to drop selected columns or keep them}
 
 \item{\dots}{not used here}
 }
@@ -30,10 +32,9 @@ matrix or a list of matrices. Otherwise function returns a \code{bayesLog}
 object (is not subsetting by column), or an \code{mcmc} or \code{mcmc.list} 
 object otherwise. If \code{i} is not missing then the iteration counts are reset.
 }
-\author{
-TJ McKinley
-}
 \seealso{
 \code{\link{bayesLog}} \code{\link{plot.bayesLog}} \code{\link{window.bayesLog}}
 }
-
+\author{
+TJ McKinley
+}

@@ -20,9 +20,9 @@ AUC(object, obs, ...)
 
 \item{obs}{A binary vector of observations.}
 
-\item{x}{A \code{bayesLog.auc} object}
-
 \item{\dots}{not used here.}
+
+\item{x}{A \code{bayesLog.auc} object}
 }
 \value{
 A \code{bayesLog.auc} object, essentially a vector of posterior 
@@ -39,7 +39,7 @@ Produce posterior for AUC from \code{bayesLog.pred} objects.
 
 \item \code{bayesLog.auc}: Print method for \code{bayesLog.auc} objects
 }}
+
 \author{
 TJ McKinley
 }
-

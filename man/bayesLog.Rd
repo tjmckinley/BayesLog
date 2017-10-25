@@ -4,15 +4,17 @@
 \alias{bayesLog}
 \title{Fits Bayesian logistic regression model}
 \usage{
-bayesLog(formula, dat, inits = NA, priorvar = 1, prior_rand_ub = 20,
-  nchains = 2, niter = 2e+05, ninitial = 100, scale = 0.05,
-  nadapt = 100, nprintsum = 1000, maxscale = 2, niterdim = 1000,
-  blocks = NA, noncentreint = NA)
+bayesLog(formula, dat, nsamples = NA, inits = NA, priorvar = 1,
+  prior_rand_ub = 20, nchains = 2, niter = 2e+05, ninitial = 100,
+  scale = 0.05, nadapt = 100, nprintsum = 1000, maxscale = 2,
+  niterdim = 1000, blocks = NA, noncentreint = NA)
 }
 \arguments{
 \item{formula}{Formula for linear regression}
 
 \item{dat}{Data frame containing data.}
+
+\item{nsamples}{Character specifying names of column in data to use as number of samples.}
 
 \item{inits}{List containing vectors of initial values for the regression
 parameters. If missing then these are simulated.}
@@ -59,4 +61,3 @@ including a subset of elements:
 \description{
 Runs MCMC algorithm for fitting a logistic regression model in a Bayesian framework, includes options for performing variable selection.
 }
-

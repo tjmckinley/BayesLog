@@ -3,9 +3,9 @@
 \name{classify}
 \alias{classify}
 \alias{classify.bayesLog.pred}
-\alias{plot.bayesLog.class}
-\alias{print.bayesLog.class}
 \alias{summary.bayesLog.class}
+\alias{print.bayesLog.class}
+\alias{plot.bayesLog.class}
 \title{Generates posterior distributions for sensitivity
 specificity, PPV and NPV}
 \usage{
@@ -17,7 +17,8 @@ classify(pred, obs, thresh, ...)
 
 \method{print}{bayesLog.class}(x, ...)
 
-\method{plot}{bayesLog.class}(x, type = c("ind", "comp"), ...)
+\method{plot}{bayesLog.class}(x, type = c("ind", "comp"),
+  comp_type = c("all", "ROC", "PV"), ...)
 }
 \arguments{
 \item{pred}{A \code{bayesLog.pred} object.}
@@ -27,6 +28,8 @@ classify(pred, obs, thresh, ...)
 \item{thresh}{Vector of thresholds between 0 and 1 at which to generate
 classification estimates.}
 
+\item{\dots}{Not currently used.}
+
 \item{object}{An object of class \code{bayesLog.class}}
 
 \item{x}{An object of class \code{bayesLog.class}}
@@ -34,7 +37,9 @@ classification estimates.}
 \item{type}{Character vector defining whether to plot
 individual or comparative plots.}
 
-\item{\dots}{Not currently used.}
+\item{comp_type}{Character containing subplot to extract when doing comparative plotting.
+If \code{"all"} then plots both ROC and Predictive Values plots, else one
+can choose to produce either.}
 }
 \value{
 An object of class \code{bayesLog.class}, which is a list

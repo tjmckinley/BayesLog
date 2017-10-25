@@ -8,7 +8,7 @@ using namespace Rcpp;
 
 // logisticMH
 NumericMatrix logisticMH(NumericMatrix dataR, NumericVector nsamplesR, NumericVector ini_pars, NumericMatrix priors, int niter, int ninitial, double scale, int nadapt, int nprintsum, double maxscale, double niterdim, int nrand, List randindexesL, IntegerMatrix data_randR, IntegerVector nblock, List blockR, int printini, List noncentreintR, NumericVector noncentreintRE);
-RcppExport SEXP BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP ninitialSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP, SEXP printiniSEXP, SEXP noncentreintRSEXP, SEXP noncentreintRESEXP) {
+RcppExport SEXP _BayesLog_logisticMH(SEXP dataRSEXP, SEXP nsamplesRSEXP, SEXP ini_parsSEXP, SEXP priorsSEXP, SEXP niterSEXP, SEXP ninitialSEXP, SEXP scaleSEXP, SEXP nadaptSEXP, SEXP nprintsumSEXP, SEXP maxscaleSEXP, SEXP niterdimSEXP, SEXP nrandSEXP, SEXP randindexesLSEXP, SEXP data_randRSEXP, SEXP nblockSEXP, SEXP blockRSEXP, SEXP printiniSEXP, SEXP noncentreintRSEXP, SEXP noncentreintRESEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -37,7 +37,7 @@ END_RCPP
 }
 // classification
 List classification(NumericMatrix pred, IntegerVector obs, IntegerVector nsamples, NumericVector thresh);
-RcppExport SEXP BayesLog_classification(SEXP predSEXP, SEXP obsSEXP, SEXP nsamplesSEXP, SEXP threshSEXP) {
+RcppExport SEXP _BayesLog_classification(SEXP predSEXP, SEXP obsSEXP, SEXP nsamplesSEXP, SEXP threshSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -48,4 +48,15 @@ BEGIN_RCPP
     rcpp_result_gen = Rcpp::wrap(classification(pred, obs, nsamples, thresh));
     return rcpp_result_gen;
 END_RCPP
+}
+
+static const R_CallMethodDef CallEntries[] = {
+    {"_BayesLog_logisticMH", (DL_FUNC) &_BayesLog_logisticMH, 19},
+    {"_BayesLog_classification", (DL_FUNC) &_BayesLog_classification, 4},
+    {NULL, NULL, 0}
+};
+
+RcppExport void R_init_BayesLog(DllInfo *dll) {
+    R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
+    R_useDynamicSymbols(dll, FALSE);
 }

@@ -2,10 +2,10 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 logisticMH <- function(dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini, noncentreintR, noncentreintRE) {
-    .Call('BayesLog_logisticMH', PACKAGE = 'BayesLog', dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini, noncentreintR, noncentreintRE)
+    .Call('_BayesLog_logisticMH', PACKAGE = 'BayesLog', dataR, nsamplesR, ini_pars, priors, niter, ninitial, scale, nadapt, nprintsum, maxscale, niterdim, nrand, randindexesL, data_randR, nblock, blockR, printini, noncentreintR, noncentreintRE)
 }
 
 classification <- function(pred, obs, nsamples, thresh) {
-    .Call('BayesLog_classification', PACKAGE = 'BayesLog', pred, obs, nsamples, thresh)
+    .Call('_BayesLog_classification', PACKAGE = 'BayesLog', pred, obs, nsamples, thresh)
 }
 
